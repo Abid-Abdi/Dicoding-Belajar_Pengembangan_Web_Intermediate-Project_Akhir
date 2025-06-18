@@ -1,9 +1,9 @@
 :root {
-  /* Core Color System - Harmonized */
-  --primary-color: #4361ee;      /* Main brand color */
-  --primary-light: #6b8aff;      /* Hover states */
-  --primary-dark: #2d4ed8;       /* Active states */
-  --primary-lighter: #93b1ff;    /* Lightest shade */
+  /* Core Color System - Harmonized Blue Theme */
+  --primary-color: #4361ee;      /* Main brand color - Blue */
+  --primary-light: #6b8aff;      /* Hover states - Lighter blue */
+  --primary-dark: #2d4ed8;       /* Active states - Darker blue */
+  --primary-lighter: #93b1ff;    /* Lightest shade - Very light blue */
   
   /* Neutral Colors - Consistent Scale */
   --dark-color: #1f2937;         /* Darkest neutral */
@@ -24,16 +24,17 @@
   --surface-color: #ffffff;      /* Card/Container background */
   --border-color: #e2e8f0;       /* Border color */
   
-  /* Consistent Gradients */
+  /* Consistent Gradients - All using primary color family */
   --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
   --gradient-primary-light: linear-gradient(135deg, var(--primary-light), var(--primary-color));
   --gradient-dark: linear-gradient(135deg, var(--dark-color), var(--dark-light));
+  --gradient-auth: linear-gradient(135deg, var(--primary-color), var(--primary-light));
   
   /* Consistent Shadows */
-  --shadow: 0 4px 20px rgba(31, 41, 55, 0.07);
-  --shadow-sm: 0 2px 8px rgba(31, 41, 55, 0.05);
-  --shadow-md: 0 6px 18px rgba(31, 41, 55, 0.08);
-  --shadow-lg: 0 12px 28px rgba(31, 41, 55, 0.12);
+  --shadow: 0 4px 20px rgba(67, 97, 238, 0.07);
+  --shadow-sm: 0 2px 8px rgba(67, 97, 238, 0.05);
+  --shadow-md: 0 6px 18px rgba(67, 97, 238, 0.08);
+  --shadow-lg: 0 12px 28px rgba(67, 97, 238, 0.12);
   
   /* Other variables remain unchanged */
   --border-radius: 12px;
@@ -210,13 +211,58 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Main Content */
 .main-content {
-  min-height: calc(100vh - var(--header-height));
-  padding: 3rem 0;
-  view-transition-name: main-content;
   position: relative;
   z-index: 1;
+  min-height: calc(100vh - var(--header-height));
+  padding: 3rem 0;
   opacity: 0;
   animation: page-enter 0.4s ease-out forwards;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Smooth transition for auth to home */
+.main-content.smooth-transition {
+  opacity: 1;
+  animation: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Auth page specific transitions */
+body.auth-page .main-content {
+  opacity: 1;
+  animation: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Disable animations for auth pages to prevent conflicts */
+body.auth-page .welcome-section,
+body.auth-page .story-card,
+body.auth-page .camera-container {
+  opacity: 1;
+  animation: none;
+}
+
+/* Improved page enter animation */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
 }
 
 /* Home Page Styles - Enhanced */
@@ -1327,6 +1373,7 @@ button[type="submit"]:active {
   padding: 3rem 0;
   opacity: 0;
   animation: page-enter 0.4s ease-out forwards;
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
 /* Story Card Transition */
@@ -1369,6 +1416,15 @@ button[type="submit"]:active {
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   margin-top: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.footer.hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .footer::before {
@@ -1746,14 +1802,17 @@ button[type="submit"]:active {
 }
 
 .notification-success {
-  border-left: 4px solid #10b981;
+  background: rgba(67, 97, 238, 0.1);
+  border-left: 4px solid var(--primary-color);
 }
 
 .notification-error {
-  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid #dc2626;
 }
 
 .notification-info {
+  background: rgba(67, 97, 238, 0.1);
   border-left: 4px solid var(--primary-color);
 }
 
@@ -2322,24 +2381,24 @@ button[type="submit"]:active {
 
 /* Notification Section */
 .notification-section {
-  background: var(--gradient-primary);
-  border-radius: 15px;
-  padding: 25px;
-  margin: 30px 0;
-  box-shadow: 0 8px 32px rgba(67, 97, 238, 0.25);
+  background: var(--gradient-primary-light);
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 2rem;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .notification-section::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  animation: pulse 3s ease-in-out infinite;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  animation: shimmer 3s infinite;
 }
 
 .notification-content {
@@ -2374,27 +2433,24 @@ button[type="submit"]:active {
 }
 
 .subscribe-btn {
-  background: linear-gradient(45deg, #10b981, #059669);
+  background: var(--gradient-primary);
   color: white;
   border: none;
-  padding: 12px 24px;
+  padding: 0.75rem 1.5rem;
   border-radius: 25px;
-  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-  min-width: 200px;
-  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.9rem;
 }
 
 .subscribe-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-  background: linear-gradient(45deg, #059669, #10b981);
+  box-shadow: var(--shadow-md);
 }
 
 .subscribe-btn:disabled {
@@ -2754,27 +2810,24 @@ button[type="submit"]:active {
 
   /* Improve subscribe button for PWA */
   .subscribe-btn {
-    background: linear-gradient(45deg, #10b981, #059669);
+    background: var(--gradient-primary);
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 0.9rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
-    gap: 6px;
-    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25);
-    min-width: 160px;
-    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: var(--shadow-sm);
+    font-size: 0.9rem;
   }
 
   .subscribe-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
-    background: linear-gradient(45deg, #059669, #10b981);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
   }
 
   .btn-icon {
@@ -3095,7 +3148,7 @@ button[type="submit"]:active {
 
   /* Make subscribe button less prominent */
   .subscribe-btn {
-    background: linear-gradient(45deg, #10b981, #059669) !important;
+    background: var(--gradient-primary) !important;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
     border-radius: 18px !important;
     padding: 8px 16px !important;
@@ -3204,7 +3257,7 @@ body.auth-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-auth);
   overflow: hidden; /* Prevent scrolling */
   margin: 0;
   padding: 0;
@@ -3277,7 +3330,7 @@ body.auth-page .main-content .container {
   left: 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(to right, #667eea, #764ba2);
+  background: var(--gradient-primary);
 }
 
 .login-container h1,
@@ -3356,7 +3409,7 @@ body.auth-page .main-content .container {
 
 .login-container button[type="submit"],
 .register-container button[type="submit"] {
-  background: linear-gradient(45deg, #667eea, #764ba2);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   padding: 0.9rem;
@@ -3373,7 +3426,7 @@ body.auth-page .main-content .container {
 .login-container button[type="submit"]:hover,
 .register-container button[type="submit"]:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
 }
 
 .login-container button[type="submit"]:disabled,
@@ -3394,7 +3447,7 @@ body.auth-page .main-content .container {
 
 .login-container a,
 .register-container a {
-  color: #667eea;
+  color: var(--primary-color);
   text-decoration: none;
   font-weight: 600;
   transition: color 0.3s ease;
@@ -3402,7 +3455,7 @@ body.auth-page .main-content .container {
 
 .login-container a:hover,
 .register-container a:hover {
-  color: #764ba2;
+  color: var(--primary-dark);
   text-decoration: underline;
 }
 
@@ -3417,15 +3470,35 @@ body.auth-page .main-content .container {
 }
 
 .error-message {
-  background: #fef2f2;
+  background: rgba(239, 68, 68, 0.1);
   color: #dc2626;
-  border: 1px solid #fecaca;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #dc2626;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-message {
+  background: rgba(67, 97, 238, 0.1);
+  color: var(--primary-dark);
+  border-left: 4px solid var(--primary-color);
 }
 
 .success-message {
-  background: #f0fdf4;
+  background: rgba(34, 197, 94, 0.1);
   color: #16a34a;
-  border: 1px solid #bbf7d0;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #16a34a;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* PWA mode adjustments for auth pages */
