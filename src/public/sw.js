@@ -112,7 +112,7 @@ async function preCacheCommonMapTiles() {
   }
 }
 
-// Fetch event with Workbox strategies
+// Fetch event with improved offline handling
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -130,6 +130,13 @@ self.addEventListener('fetch', (event) => {
   const isPWA = self.matchMedia('(display-mode: standalone)').matches || 
                 self.matchMedia('(display-mode: window-controls-overlay)').matches ||
                 self.matchMedia('(display-mode: minimal-ui)').matches;
+
+  // Handle navigation requests (HTML pages) with cache-first strategy for better offline experience
+  if (request.mode === 'navigate') {
+    log(LOG_LEVEL.DEBUG, 'Handling navigation request:', request.url);
+    event.respondWith(handleNavigationRequest(request, isPWA));
+    return;
+  }
 
   // Handle authentication requests (login/register) - always network first for PWA
   if (url.pathname.includes('/login') || url.pathname.includes('/register')) {
@@ -166,10 +173,118 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Handle JavaScript and CSS files with cache-first strategy for better offline experience
+  if (request.destination === 'script' || request.destination === 'style') {
+    log(LOG_LEVEL.DEBUG, 'Handling asset request:', request.url);
+    event.respondWith(handleAssetRequest(request));
+    return;
+  }
+
   // Handle other requests with network-first
   log(LOG_LEVEL.DEBUG, 'Handling other request:', request.url);
   event.respondWith(handleOtherRequest(request));
 });
+
+// Cache-first strategy for navigation requests (better offline experience)
+async function handleNavigationRequest(request, isPWA = false) {
+  const cache = await caches.open(CACHE_NAME);
+  
+  try {
+    // Try cache first
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      log(LOG_LEVEL.INFO, 'Navigation served from cache:', request.url);
+      return cachedResponse;
+    }
+
+    // If not in cache, try network
+    const response = await fetch(request);
+    if (response.ok) {
+      const responseToCache = response.clone();
+      await cache.put(request, responseToCache);
+      log(LOG_LEVEL.INFO, 'Navigation cached for offline use:', request.url);
+      return response;
+    }
+    
+    throw new Error('Navigation fetch failed');
+  } catch (error) {
+    log(LOG_LEVEL.WARN, 'Navigation request failed, serving offline page:', error);
+    
+    // Return offline page for navigation requests
+    const offlineResponse = await cache.match('/');
+    if (offlineResponse) {
+      return offlineResponse;
+    }
+    
+    // If no offline page available, return a basic offline response
+    return new Response(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Offline - Story App</title>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .offline-message { color: #666; margin: 20px 0; }
+            .retry-btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+          </style>
+        </head>
+        <body>
+          <h1>📱 You're Offline</h1>
+          <div class="offline-message">
+            <p>Please check your internet connection and try again.</p>
+            <p>Some features may be available offline if you've used them before.</p>
+          </div>
+          <button class="retry-btn" onclick="window.location.reload()">Retry</button>
+        </body>
+      </html>
+    `, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' }
+    });
+  }
+}
+
+// Cache-first strategy for assets (JS, CSS)
+async function handleAssetRequest(request) {
+  const cache = await caches.open(CACHE_NAME);
+  
+  try {
+    // Try cache first
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      log(LOG_LEVEL.INFO, 'Asset served from cache:', request.url);
+      return cachedResponse;
+    }
+
+    // If not in cache, try network
+    const response = await fetch(request);
+    if (response.ok) {
+      const responseToCache = response.clone();
+      await cache.put(request, responseToCache);
+      log(LOG_LEVEL.INFO, 'Asset cached for offline use:', request.url);
+      return response;
+    }
+    
+    throw new Error('Asset fetch failed');
+  } catch (error) {
+    log(LOG_LEVEL.WARN, 'Asset request failed:', request.url, error);
+    
+    // Return a basic fallback for failed assets
+    if (request.destination === 'script') {
+      return new Response('console.log("Asset not available offline");', {
+        headers: { 'Content-Type': 'application/javascript' }
+      });
+    } else if (request.destination === 'style') {
+      return new Response('/* Styles not available offline */', {
+        headers: { 'Content-Type': 'text/css' }
+      });
+    }
+    
+    throw error;
+  }
+}
 
 // Network-only strategy for authentication requests (login/register)
 async function handleAuthRequest(request, isPWA = false) {
@@ -546,7 +661,7 @@ async function handleOtherRequest(request) {
     // Try network first
     const response = await fetch(request);
     if (response.ok) {
-    return response;
+      return response;
     }
     throw new Error('Network response was not ok');
   } catch (error) {
@@ -554,14 +669,89 @@ async function handleOtherRequest(request) {
     const cache = await caches.open(CACHE_NAME);
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-    return cachedResponse;
+      log(LOG_LEVEL.INFO, 'Serving cached response for:', request.url);
+      return cachedResponse;
     }
     
-    // If no cache available, return a basic offline response
-    return new Response('Offline - No cached content available', {
+    // If no cache available, return a proper offline response based on request type
+    const url = new URL(request.url);
+    const isHTML = request.headers.get('accept')?.includes('text/html');
+    
+    if (isHTML || url.pathname === '/' || url.pathname === '/index.html') {
+      // Return offline page for HTML requests
+      const offlineResponse = await cache.match('/');
+      if (offlineResponse) {
+        return offlineResponse;
+      }
+      
+      // Return basic offline HTML
+      return new Response(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Offline - Story App</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                text-align: center; 
+                padding: 50px; 
+                background: #f5f5f5;
+                margin: 0;
+              }
+              .offline-container {
+                background: white;
+                border-radius: 10px;
+                padding: 40px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                max-width: 500px;
+                margin: 0 auto;
+              }
+              .offline-icon { font-size: 48px; margin-bottom: 20px; }
+              .offline-title { color: #333; margin-bottom: 20px; }
+              .offline-message { color: #666; margin: 20px 0; line-height: 1.6; }
+              .retry-btn { 
+                background: #007bff; 
+                color: white; 
+                padding: 12px 24px; 
+                border: none; 
+                border-radius: 5px; 
+                cursor: pointer;
+                font-size: 16px;
+                transition: background 0.3s;
+              }
+              .retry-btn:hover { background: #0056b3; }
+            </style>
+          </head>
+          <body>
+            <div class="offline-container">
+              <div class="offline-icon">📱</div>
+              <h1 class="offline-title">You're Offline</h1>
+              <div class="offline-message">
+                <p>Please check your internet connection and try again.</p>
+                <p>Some features may be available offline if you've used them before.</p>
+              </div>
+              <button class="retry-btn" onclick="window.location.reload()">Retry Connection</button>
+            </div>
+          </body>
+        </html>
+      `, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' }
+      });
+    }
+    
+    // For other requests, return a basic offline response
+    return new Response(JSON.stringify({
+      error: 'No internet connection',
+      message: 'Please check your connection and try again.',
+      offline: true,
+      timestamp: new Date().toISOString()
+    }), {
       status: 503,
       statusText: 'Service Unavailable',
-      headers: { 'Content-Type': 'text/plain' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }

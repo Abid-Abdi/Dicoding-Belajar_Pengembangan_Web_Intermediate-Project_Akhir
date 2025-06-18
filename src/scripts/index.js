@@ -6,6 +6,7 @@ import { registerServiceWorker, requestNotificationPermission, subscribeToPushNo
 import { initializePWAInstall } from './utils/pwa-install';
 import NetworkStatus from './utils/network-status';
 import { syncOfflineStories } from './data/api';
+import DatabaseHelper from './utils/indexed-db';
 
 const app = new App();
 let networkStatus = null;
@@ -48,6 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Setup online/offline event listeners
   setupNetworkEventListeners();
+  
+  // Check offline capabilities
+  await checkOfflineCapabilities();
 });
 
 // Setup network event listeners for automatic sync
@@ -339,5 +343,118 @@ function showPWAStatus() {
 window.addEventListener('hashchange', () => {
   app._renderPage();
 });
+
+// Check offline capabilities and show status
+async function checkOfflineCapabilities() {
+  try {
+    // Check if service worker is registered
+    const registration = await navigator.serviceWorker.getRegistration();
+    const hasServiceWorker = !!registration;
+    
+    // Check if IndexedDB is available
+    const hasIndexedDB = 'indexedDB' in window;
+    
+    // Check if we have cached data
+    let hasCachedData = false;
+    if (hasIndexedDB) {
+      try {
+        const db = new DatabaseHelper();
+        const stats = await db.getCacheStats();
+        hasCachedData = stats.total > 0;
+      } catch (error) {
+        console.warn('Failed to check cached data:', error);
+      }
+    }
+    
+    // Check if we're in PWA mode
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                  window.matchMedia('(display-mode: minimal-ui)').matches ||
+                  window.navigator.standalone === true;
+    
+    console.log('📱 Offline Capabilities Check:', {
+      hasServiceWorker,
+      hasIndexedDB,
+      hasCachedData,
+      isPWA,
+      isOnline: navigator.onLine
+    });
+    
+    // Show offline status in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      showOfflineStatus({
+        hasServiceWorker,
+        hasIndexedDB,
+        hasCachedData,
+        isPWA,
+        isOnline: navigator.onLine
+      });
+    }
+    
+    return {
+      hasServiceWorker,
+      hasIndexedDB,
+      hasCachedData,
+      isPWA,
+      isOnline: navigator.onLine
+    };
+  } catch (error) {
+    console.error('Failed to check offline capabilities:', error);
+    return {
+      hasServiceWorker: false,
+      hasIndexedDB: false,
+      hasCachedData: false,
+      isPWA: false,
+      isOnline: navigator.onLine
+    };
+  }
+}
+
+// Show offline status for debugging
+function showOfflineStatus(capabilities) {
+  // Remove existing status if any
+  const existingStatus = document.querySelector('.offline-capabilities-status');
+  if (existingStatus) {
+    existingStatus.remove();
+  }
+  
+  const statusDiv = document.createElement('div');
+  statusDiv.className = 'offline-capabilities-status';
+  statusDiv.style.cssText = `
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 9999;
+    font-family: monospace;
+    max-width: 300px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  `;
+  
+  const getStatusIcon = (status) => status ? '✅' : '❌';
+  
+  statusDiv.innerHTML = `
+    <div style="margin-bottom: 8px; font-weight: bold; color: #4CAF50;">Offline Status</div>
+    <div>🌐 Online: ${getStatusIcon(capabilities.isOnline)}</div>
+    <div>📱 PWA: ${getStatusIcon(capabilities.isPWA)}</div>
+    <div>🔧 SW: ${getStatusIcon(capabilities.hasServiceWorker)}</div>
+    <div>💾 IndexedDB: ${getStatusIcon(capabilities.hasIndexedDB)}</div>
+    <div>📦 Cached: ${getStatusIcon(capabilities.hasCachedData)}</div>
+  `;
+  
+  document.body.appendChild(statusDiv);
+  
+  // Auto remove after 10 seconds
+  setTimeout(() => {
+    if (statusDiv.parentNode) {
+      statusDiv.parentNode.removeChild(statusDiv);
+    }
+  }, 10000);
+}
 
 

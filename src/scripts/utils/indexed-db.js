@@ -37,6 +37,7 @@ class DatabaseHelper {
     this.dbName = CONFIG.DATABASE_NAME;
     this.dbVersion = CONFIG.DATABASE_VERSION;
     this.objectStoreName = CONFIG.OBJECT_STORE_NAME;
+    this.isInitialized = false;
   }
 
   async openDB() {
@@ -44,15 +45,19 @@ class DatabaseHelper {
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => {
+        log(LOG_LEVEL.ERROR, 'Failed to open database:', request.error);
         reject(new Error('Failed to open database'));
       };
 
       request.onsuccess = () => {
+        this.isInitialized = true;
+        log(LOG_LEVEL.INFO, 'Database opened successfully');
         resolve(request.result);
       };
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
+        log(LOG_LEVEL.INFO, 'Database upgrade needed, version:', db.version);
         
         // Create object store if it doesn't exist
         if (!db.objectStoreNames.contains(this.objectStoreName)) {
@@ -61,18 +66,30 @@ class DatabaseHelper {
             autoIncrement: false // Use API ID as key
           });
           
-          // Create indexes
+          // Create indexes for better offline performance
           objectStore.createIndex('title', 'title', { unique: false });
           objectStore.createIndex('description', 'description', { unique: false });
           objectStore.createIndex('createdAt', 'createdAt', { unique: false });
           objectStore.createIndex('isOffline', 'isOffline', { unique: false });
+          objectStore.createIndex('syncedAt', 'syncedAt', { unique: false });
+          objectStore.createIndex('isSyncing', 'isSyncing', { unique: false });
+          
+          log(LOG_LEVEL.INFO, 'Object store and indexes created successfully');
         }
       };
     });
   }
 
+  // Ensure database is initialized
+  async ensureInitialized() {
+    if (!this.isInitialized) {
+      await this.openDB();
+    }
+  }
+
   // Cache API stories for offline access
   async cacheStories(stories) {
+    await this.ensureInitialized();
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([this.objectStoreName], 'readwrite');
@@ -85,30 +102,33 @@ class DatabaseHelper {
         const existingStories = getAllRequest.result;
         
         // Clear existing cached stories (but keep offline stories and recently synced stories)
-      const clearRequest = objectStore.openCursor();
-      clearRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          const story = cursor.value;
+        const clearRequest = objectStore.openCursor();
+        clearRequest.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            const story = cursor.value;
             // Only delete if it's not an offline story and not recently synced (within last 5 minutes)
             const isRecentlySynced = story.syncedAt && 
               (new Date().getTime() - new Date(story.syncedAt).getTime()) < 5 * 60 * 1000;
             
             if (!story.isOffline && !isRecentlySynced) {
-            cursor.delete();
-          }
-          cursor.continue();
-        } else {
-          // All stories processed, now add new ones
-          let completed = 0;
-          const total = stories.length;
-          
-          if (total === 0) {
-            resolve();
-            return;
-          }
-          
-          stories.forEach(story => {
+              cursor.delete();
+            }
+            cursor.continue();
+          } else {
+            // All stories processed, now add new ones
+            let completed = 0;
+            const total = stories.length;
+            
+            if (total === 0) {
+              log(LOG_LEVEL.INFO, 'No stories to cache');
+              resolve();
+              return;
+            }
+            
+            log(LOG_LEVEL.INFO, `Caching ${total} stories for offline use`);
+            
+            stories.forEach(story => {
               // Check if this story already exists (by API ID or content)
               const existingStory = existingStories.find(existing => 
                 existing.id === story.id || 
@@ -133,43 +153,48 @@ class DatabaseHelper {
                   if (completed === total) {
                     // Pre-cache images for offline use
                     this._preCacheStoryImages(stories);
+                    log(LOG_LEVEL.INFO, `Successfully cached ${completed} stories`);
                     resolve();
                   }
                 };
                 
                 request.onerror = () => {
+                  log(LOG_LEVEL.ERROR, 'Failed to update existing story:', request.error);
                   reject(new Error('Failed to update existing story'));
                 };
               } else {
                 // Add new story
-            const request = objectStore.put({
-              ...story,
-              cachedAt: new Date().toISOString(),
+                const request = objectStore.put({
+                  ...story,
+                  cachedAt: new Date().toISOString(),
                   isOffline: false,
                   isSyncing: false,
                   syncedAt: new Date().toISOString(),
                   syncMethod: 'api_cache'
-            });
-            
-            request.onsuccess = () => {
-              completed++;
-              if (completed === total) {
+                });
+                
+                request.onsuccess = () => {
+                  completed++;
+                  if (completed === total) {
                     // Pre-cache images for offline use
                     this._preCacheStoryImages(stories);
-                resolve();
+                    log(LOG_LEVEL.INFO, `Successfully cached ${completed} stories`);
+                    resolve();
+                  }
+                };
+                
+                request.onerror = () => {
+                  log(LOG_LEVEL.ERROR, 'Failed to cache story:', request.error);
+                  reject(new Error('Failed to cache story'));
+                };
               }
-            };
-            
-            request.onerror = () => {
-              reject(new Error('Failed to cache story'));
-            };
-              }
-          });
-        }
+            });
+          }
         };
       };
       
       getAllRequest.onerror = () => {
+        log(LOG_LEVEL.ERROR, 'Failed to get existing stories:', getAllRequest.error);
         reject(new Error('Failed to get existing stories'));
       };
     });
@@ -213,6 +238,7 @@ class DatabaseHelper {
 
   // Get cached stories for offline display
   async getCachedStories() {
+    await this.ensureInitialized();
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([this.objectStoreName], 'readonly');
@@ -221,16 +247,23 @@ class DatabaseHelper {
 
       request.onsuccess = () => {
         const stories = request.result;
+        log(LOG_LEVEL.INFO, `Retrieved ${stories.length} cached stories from IndexedDB`);
+        
+        // Sort stories by creation date (newest first)
+        const sortedStories = stories.sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
         
         // Pre-cache images for offline use when loading stories
-        if (stories.length > 0) {
-          this._preCacheStoryImages(stories);
+        if (sortedStories.length > 0) {
+          this._preCacheStoryImages(sortedStories);
         }
         
-        resolve(stories);
+        resolve(sortedStories);
       };
 
       request.onerror = () => {
+        log(LOG_LEVEL.ERROR, 'Failed to get cached stories:', request.error);
         reject(new Error('Failed to get cached stories'));
       };
     });
