@@ -128,6 +128,11 @@ class DatabaseHelper {
             
             log(LOG_LEVEL.INFO, `Caching ${total} stories for offline use`);
             
+            // Start pre-caching images immediately
+            this._preCacheStoryImages(stories).catch(error => {
+              log(LOG_LEVEL.WARN, 'Failed to pre-cache images during story caching:', error);
+            });
+            
             stories.forEach(story => {
               // Check if this story already exists (by API ID or content)
               const existingStory = existingStories.find(existing => 
@@ -151,8 +156,6 @@ class DatabaseHelper {
                 request.onsuccess = () => {
                   completed++;
                   if (completed === total) {
-                    // Pre-cache images for offline use
-                    this._preCacheStoryImages(stories);
                     log(LOG_LEVEL.INFO, `Successfully cached ${completed} stories`);
                     resolve();
                   }
@@ -176,8 +179,6 @@ class DatabaseHelper {
                 request.onsuccess = () => {
                   completed++;
                   if (completed === total) {
-                    // Pre-cache images for offline use
-                    this._preCacheStoryImages(stories);
                     log(LOG_LEVEL.INFO, `Successfully cached ${completed} stories`);
                     resolve();
                   }
@@ -206,31 +207,64 @@ class DatabaseHelper {
       const imageCache = await caches.open('StoryApp-Images-v1');
       let cachedCount = 0;
       let skippedCount = 0;
+      let failedCount = 0;
       
       const imagePromises = stories
         .filter(story => story.photoUrl && story.photoUrl.startsWith('https://'))
         .map(async (story) => {
           try {
-            const response = await fetch(story.photoUrl);
-            
-            // Skip caching if server returns 503
-            if (response.status === 503) {
-              skippedCount++;
+            // Check if image is already cached
+            const existingResponse = await imageCache.match(story.photoUrl);
+            if (existingResponse) {
+              log(LOG_LEVEL.DEBUG, 'Story image already cached:', story.photoUrl);
               return;
             }
             
-            if (response.ok) {
-              const responseToCache = response.clone();
-              await imageCache.put(story.photoUrl, responseToCache);
-              cachedCount++;
+            // Try to fetch with retry mechanism
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount <= maxRetries) {
+              try {
+                const response = await fetch(story.photoUrl);
+                
+                // Skip caching if server returns 503
+                if (response.status === 503) {
+                  log(LOG_LEVEL.WARN, 'Skipping story image due to 503:', story.photoUrl);
+                  skippedCount++;
+                  return;
+                }
+                
+                if (response.ok) {
+                  const responseToCache = response.clone();
+                  await imageCache.put(story.photoUrl, responseToCache);
+                  cachedCount++;
+                  log(LOG_LEVEL.DEBUG, 'Successfully cached story image:', story.photoUrl);
+                  return;
+                }
+                
+                throw new Error(`Image fetch failed with status: ${response.status}`);
+              } catch (error) {
+                retryCount++;
+                log(LOG_LEVEL.WARN, `Failed to cache story image (attempt ${retryCount}/${maxRetries + 1}):`, story.photoUrl, error);
+                
+                if (retryCount > maxRetries) {
+                  failedCount++;
+                  break;
+                }
+                
+                // Wait before retry with exponential backoff
+                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
+              }
             }
           } catch (error) {
             log(LOG_LEVEL.WARN, 'Failed to pre-cache story image:', story.photoUrl, error);
+            failedCount++;
           }
         });
       
       await Promise.allSettled(imagePromises);
-      log(LOG_LEVEL.INFO, `IndexedDB story images pre-caching: ${cachedCount} cached, ${skippedCount} skipped (503)`);
+      log(LOG_LEVEL.INFO, `IndexedDB story images pre-caching: ${cachedCount} cached, ${skippedCount} skipped (503), ${failedCount} failed`);
     } catch (error) {
       log(LOG_LEVEL.WARN, 'Failed to pre-cache story images from IndexedDB:', error);
     }

@@ -12,6 +12,12 @@ export function generateHeader() {
   const isLoggedIn = isAuthenticated();
   const currentPath = window.location.hash.slice(1) || '/';
   
+  // Check if running in PWA mode
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                window.matchMedia('(display-mode: minimal-ui)').matches ||
+                window.navigator.standalone === true;
+  
   // Base header structure
   const baseHeader = `
     <header class="app-header">

@@ -3807,6 +3807,7 @@ body.auth-page .main-content .container {
     gap: 0.5rem;
     margin-left: auto;
     flex-shrink: 0;
+    order: 2;
   }
 
   .notification-toggle {
@@ -3823,6 +3824,7 @@ body.auth-page .main-content .container {
     justify-content: center;
     width: 36px;
     height: 36px;
+    order: 1;
   }
 
   .notification-toggle:hover {
@@ -3855,6 +3857,7 @@ body.auth-page .main-content .container {
     display: flex;
     align-items: center;
     justify-content: center;
+    order: 2;
   }
 
   .drawer-button:hover {
@@ -4055,6 +4058,154 @@ body.auth-page .main-content .container {
     align-items: center;
     gap: 0.5rem;
     margin-left: auto;
+  }
+
+  .header-control-btn {
+    background: none;
+    border: none;
+    color: var(--light-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+  }
+
+  .header-control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+  }
+
+  .user-avatar {
+    background: var(--gradient-primary);
+    border: none;
+    color: var(--light-color);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .user-avatar:hover {
+    background: var(--gradient-primary-light);
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+  }
+
+  .notification-toggle {
+    background: none;
+    border: none;
+    color: var(--light-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+  }
+
+  .notification-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .notification-toggle.active {
+    color: var(--primary-light);
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .notification-toggle.disabled {
+    color: var(--text-lighter);
+    opacity: 0.6;
+  }
+
+  .drawer-button {
+    display: none;
+  }
+
+  /* Navbar tetap di samping notification toggle untuk web */
+  .navigation-drawer {
+    display: flex;
+  }
+}
+
+/* Web Mode - Other Controls */
+@media not (display-mode: standalone) and not (display-mode: minimal-ui) {
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .header-control-btn {
+    background: none;
+    border: none;
+    color: var(--light-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+  }
+
+  .header-control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+  }
+
+  .user-avatar {
+    background: var(--gradient-primary);
+    border: none;
+    color: var(--light-color);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .user-avatar:hover {
+    background: var(--gradient-primary-light);
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
   }
 
   .notification-toggle {

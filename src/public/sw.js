@@ -62,6 +62,10 @@ self.addEventListener('install', (event) => {
         });
       })
       .then(() => {
+        // Pre-cache default images for offline use
+        return preCacheDefaultImages();
+      })
+      .then(() => {
         // Pre-cache some common map tiles
         return preCacheCommonMapTiles();
       })
@@ -72,6 +76,67 @@ self.addEventListener('install', (event) => {
       })
   );
 });
+
+// Helper function to pre-cache default images
+async function preCacheDefaultImages() {
+  try {
+    const imageCache = await caches.open(IMAGE_CACHE_NAME);
+    
+    // Default images to cache
+    const defaultImages = [
+      '/images/default-story.jpg',
+      '/images/logo.png'
+    ];
+    
+    let cachedCount = 0;
+    const imagePromises = defaultImages.map(async (imagePath) => {
+      try {
+        // Check if already cached
+        const existingResponse = await imageCache.match(imagePath);
+        if (existingResponse) {
+          log(LOG_LEVEL.DEBUG, 'Default image already cached:', imagePath);
+          return;
+        }
+        
+        // Try to fetch with retry mechanism
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount <= maxRetries) {
+          try {
+            const response = await fetch(imagePath);
+            if (response.ok) {
+              const responseToCache = response.clone();
+              await imageCache.put(imagePath, responseToCache);
+              cachedCount++;
+              log(LOG_LEVEL.DEBUG, 'Default image cached:', imagePath);
+              return;
+            }
+            
+            throw new Error(`Default image fetch failed with status: ${response.status}`);
+          } catch (error) {
+            retryCount++;
+            log(LOG_LEVEL.WARN, `Failed to pre-cache default image (attempt ${retryCount}/${maxRetries + 1}):`, imagePath, error);
+            
+            if (retryCount > maxRetries) {
+              break;
+            }
+            
+            // Wait before retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
+          }
+        }
+      } catch (error) {
+        log(LOG_LEVEL.WARN, 'Failed to pre-cache default image:', imagePath, error);
+      }
+    });
+    
+    await Promise.allSettled(imagePromises);
+    log(LOG_LEVEL.INFO, `Default images pre-caching completed: ${cachedCount}/${defaultImages.length} images cached`);
+  } catch (error) {
+    log(LOG_LEVEL.WARN, 'Failed to pre-cache default images:', error);
+  }
+}
 
 // Helper function to pre-cache common map tiles
 async function preCacheCommonMapTiles() {
@@ -121,7 +186,7 @@ self.addEventListener('fetch', (event) => {
   if (url.protocol === 'chrome-extension:' || 
       url.protocol === 'moz-extension:' || 
       url.protocol === 'ms-browser-extension:' ||
-      !url.hostname.includes('localhost') && !url.hostname.includes('story-api.dicoding.dev')) {
+      !url.hostname.includes('localhost') && !url.hostname.includes('story-api.dicoding.dev') && !url.hostname.includes('tile.openstreetmap.org')) {
     // Don't log skipped requests to reduce console noise
     return;
   }
@@ -152,8 +217,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle story images from API specifically
-  if (url.hostname.includes('story-api.dicoding.dev') && url.pathname.includes('/images/stories/')) {
+  // Handle story images from API specifically - improved URL matching
+  if (url.hostname.includes('story-api.dicoding.dev') && 
+      (url.pathname.includes('/images/stories/') || url.pathname.includes('/images/') && url.pathname.includes('stories'))) {
     log(LOG_LEVEL.DEBUG, 'Handling story image request:', request.url);
     event.respondWith(handleStoryImageRequest(request));
     return;
@@ -167,7 +233,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle other image requests with cache-first strategy
-  if (request.destination === 'image') {
+  if (request.destination === 'image' || 
+      request.headers.get('accept')?.includes('image/') ||
+      url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
     log(LOG_LEVEL.DEBUG, 'Handling general image request:', request.url);
     event.respondWith(handleImageRequest(request));
     return;
@@ -339,7 +407,7 @@ async function handleAuthRequest(request, isPWA = false) {
   }
 }
 
-// Stale-while-revalidate for API requests
+// Stale-while-revalidate strategy for API requests
 async function handleApiRequest(request) {
   const cache = await caches.open(API_CACHE_NAME);
   
@@ -360,7 +428,14 @@ async function handleApiRequest(request) {
           const responseForJson = response.clone();
           const responseData = await responseForJson.json();
           if (responseData.listStory && responseData.listStory.length > 0) {
-            await cacheStoryImages(responseData.listStory);
+            log(LOG_LEVEL.INFO, `Starting to cache ${responseData.listStory.length} story images...`);
+            
+            // Cache images immediately without waiting
+            cacheStoryImages(responseData.listStory).then(cacheStats => {
+              log(LOG_LEVEL.INFO, 'Story images caching completed with stats:', cacheStats);
+            }).catch(error => {
+              log(LOG_LEVEL.WARN, 'Failed to cache story images:', error);
+            });
           }
         } catch (error) {
           log(LOG_LEVEL.WARN, 'Failed to cache story images:', error);
@@ -368,26 +443,32 @@ async function handleApiRequest(request) {
       }
     }
     return response;
-  }).catch(() => {
-    // If fetch fails, return null
+  }).catch((error) => {
+    // If fetch fails, log the error
+    log(LOG_LEVEL.WARN, 'API fetch failed:', request.url, error);
     return null;
   });
 
   // Return cached response immediately if available
   if (cachedResponse) {
+    log(LOG_LEVEL.DEBUG, 'API response served from cache:', request.url);
     return cachedResponse;
   }
 
   // If no cache, wait for fetch
   const freshResponse = await fetchPromise;
   if (freshResponse) {
+    log(LOG_LEVEL.DEBUG, 'API response served from network:', request.url);
     return freshResponse;
   }
 
   // If both cache and fetch fail, return offline response
+  log(LOG_LEVEL.WARN, 'API request failed, returning offline response:', request.url);
   return new Response(JSON.stringify({
     error: 'No internet connection',
-    message: 'Please check your connection and try again'
+    message: 'Please check your connection and try again',
+    offline: true,
+    timestamp: new Date().toISOString()
   }), {
     status: 503,
     headers: { 'Content-Type': 'application/json' }
@@ -399,32 +480,68 @@ async function cacheStoryImages(stories) {
   const imageCache = await caches.open(IMAGE_CACHE_NAME);
   let cachedCount = 0;
   let skippedCount = 0;
+  let failedCount = 0;
   
   const imagePromises = stories
     .filter(story => story.photoUrl && story.photoUrl.startsWith('https://'))
     .map(async (story) => {
       try {
-        const response = await fetch(story.photoUrl);
-        
-        // Skip caching if server returns 503
-        if (response.status === 503) {
-          skippedCount++;
+        // Check if image is already cached
+        const existingResponse = await imageCache.match(story.photoUrl);
+        if (existingResponse) {
+          log(LOG_LEVEL.DEBUG, 'Story image already cached:', story.photoUrl);
           return;
         }
         
-        if (response.ok) {
-          const responseToCache = response.clone();
-          await imageCache.put(story.photoUrl, responseToCache);
-          cachedCount++;
+        // Try to fetch with retry mechanism
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount <= maxRetries) {
+          try {
+            const response = await fetch(story.photoUrl);
+            
+            // Skip caching if server returns 503
+            if (response.status === 503) {
+              log(LOG_LEVEL.WARN, 'Skipping story image due to 503:', story.photoUrl);
+              skippedCount++;
+              return;
+            }
+            
+            if (response.ok) {
+              const responseToCache = response.clone();
+              await imageCache.put(story.photoUrl, responseToCache);
+              cachedCount++;
+              log(LOG_LEVEL.DEBUG, 'Successfully cached story image:', story.photoUrl);
+              return;
+            }
+            
+            throw new Error(`Image fetch failed with status: ${response.status}`);
+          } catch (error) {
+            retryCount++;
+            log(LOG_LEVEL.WARN, `Failed to cache story image (attempt ${retryCount}/${maxRetries + 1}):`, story.photoUrl, error);
+            
+            if (retryCount > maxRetries) {
+              failedCount++;
+              break;
+            }
+            
+            // Wait before retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
+          }
         }
       } catch (error) {
         log(LOG_LEVEL.WARN, 'Failed to pre-cache story image:', story.photoUrl, error);
+        failedCount++;
       }
     });
   
   // Wait for all images to be cached
   await Promise.allSettled(imagePromises);
-  log(LOG_LEVEL.INFO, `Story images pre-caching completed: ${cachedCount} cached, ${skippedCount} skipped (503)`);
+  log(LOG_LEVEL.INFO, `Story images pre-caching completed: ${cachedCount} cached, ${skippedCount} skipped (503), ${failedCount} failed`);
+  
+  // Return statistics for debugging
+  return { cachedCount, skippedCount, failedCount };
 }
 
 // Cache-first strategy for story images from API
@@ -439,43 +556,59 @@ async function handleStoryImageRequest(request) {
     return cachedResponse;
   }
 
-  // If not in cache, try to fetch
-  try {
-    const response = await fetch(request);
-    
-    // Handle 503 Service Unavailable specifically - return default image immediately
-    if (response.status === 503) {
-      log(LOG_LEVEL.WARN, `Service unavailable (503) for story image: ${request.url}, using default image`);
-      const defaultImage = await cache.match('/images/default-story.jpg');
-      if (defaultImage) {
-        return defaultImage;
+  // If not in cache, try to fetch with retry mechanism
+  let retryCount = 0;
+  const maxRetries = 3;
+  
+  while (retryCount <= maxRetries) {
+    try {
+      const response = await fetch(request);
+      
+      // Handle 503 Service Unavailable specifically - return default image immediately
+      if (response.status === 503) {
+        log(LOG_LEVEL.WARN, `Service unavailable (503) for story image: ${request.url}, using default image`);
+        const defaultImage = await cache.match('/images/default-story.jpg');
+        if (defaultImage) {
+          return defaultImage;
+        }
+        // If no default image, return placeholder
+        return createPlaceholderImage();
       }
-      // If no default image, return placeholder
-      return createPlaceholderImage();
+      
+      if (response.ok) {
+        const responseToCache = response.clone();
+        await cache.put(request, responseToCache);
+        log(LOG_LEVEL.INFO, 'Story image cached for offline use:', request.url);
+        return response;
+      }
+      
+      throw new Error(`Story image fetch failed with status: ${response.status}`);
+    } catch (error) {
+      retryCount++;
+      log(LOG_LEVEL.WARN, `Failed to fetch story image (attempt ${retryCount}/${maxRetries + 1}):`, request.url, error);
+      
+      if (retryCount > maxRetries) {
+        break;
+      }
+      
+      // Wait before retry with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
     }
-    
-    if (response.ok) {
-      const responseToCache = response.clone();
-      await cache.put(request, responseToCache);
-      log(LOG_LEVEL.INFO, 'Story image cached for offline use:', request.url);
-      return response;
-    }
-    
-    throw new Error(`Story image fetch failed with status: ${response.status}`);
-  } catch (error) {
-    log(LOG_LEVEL.WARN, 'Failed to fetch story image:', request.url, error);
-    
-    // Try fallback to default image
-    const defaultImage = await cache.match('/images/default-story.jpg');
-    if (defaultImage) {
-      log(LOG_LEVEL.INFO, 'Using default image as fallback for:', request.url);
-      return defaultImage;
-    }
-    
-    // If no default image available, return placeholder
-    log(LOG_LEVEL.INFO, 'Using placeholder image for:', request.url);
-    return createPlaceholderImage();
   }
+  
+  // All retries failed, try fallback
+  log(LOG_LEVEL.WARN, 'Failed to fetch story image, trying fallback:', request.url);
+  
+  // Try fallback to default image
+  const defaultImage = await cache.match('/images/default-story.jpg');
+  if (defaultImage) {
+    log(LOG_LEVEL.INFO, 'Using default image as fallback for:', request.url);
+    return defaultImage;
+  }
+  
+  // If no default image available, return placeholder
+  log(LOG_LEVEL.INFO, 'Using placeholder image for:', request.url);
+  return createPlaceholderImage();
 }
 
 // Cache-first strategy for map tiles
@@ -513,12 +646,23 @@ async function handleMapTileRequest(request) {
 
 // Helper function to create a placeholder image
 function createPlaceholderImage() {
-  // Create a simple SVG placeholder
+  // Create a simple SVG placeholder with better styling
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
-      <rect width="300" height="200" fill="#f5f5f5"/>
-      <text x="150" y="100" font-family="Arial, sans-serif" font-size="16" fill="#999" text-anchor="middle" dy=".3em">
+      <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#e9ecef;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect width="300" height="200" fill="url(#grad1)"/>
+      <rect x="10" y="10" width="280" height="180" fill="none" stroke="#dee2e6" stroke-width="2" stroke-dasharray="5,5"/>
+      <circle cx="150" cy="80" r="20" fill="#adb5bd"/>
+      <text x="150" y="120" font-family="Arial, sans-serif" font-size="14" fill="#6c757d" text-anchor="middle" dy=".3em">
         Image Unavailable
+      </text>
+      <text x="150" y="140" font-family="Arial, sans-serif" font-size="12" fill="#adb5bd" text-anchor="middle" dy=".3em">
+        Check your connection
       </text>
     </svg>
   `;
@@ -589,13 +733,15 @@ async function handleImageRequest(request) {
     // Log when serving story images from cache
     if (url.hostname.includes('story-api.dicoding.dev')) {
       log(LOG_LEVEL.INFO, 'Story image served from cache:', request.url);
+    } else {
+      log(LOG_LEVEL.DEBUG, 'Image served from cache:', request.url);
     }
     return cachedResponse;
   }
 
   // If not in cache, fetch and cache with retry mechanism
   let retryCount = 0;
-  const maxRetries = 1; // Reduce retries for 503 errors
+  const maxRetries = 3; // Increase retries for better reliability
   
   while (retryCount <= maxRetries) {
     try {
@@ -619,6 +765,8 @@ async function handleImageRequest(request) {
         // Log when caching story images
         if (url.hostname.includes('story-api.dicoding.dev')) {
           log(LOG_LEVEL.INFO, 'Story image cached for offline use:', request.url);
+        } else {
+          log(LOG_LEVEL.DEBUG, 'Image cached for offline use:', request.url);
         }
         
         return response;
@@ -631,6 +779,8 @@ async function handleImageRequest(request) {
       // Log failed story image fetches
       if (url.hostname.includes('story-api.dicoding.dev')) {
         log(LOG_LEVEL.WARN, `Failed to fetch story image (attempt ${retryCount}/${maxRetries + 1}):`, request.url, error);
+      } else {
+        log(LOG_LEVEL.DEBUG, `Failed to fetch image (attempt ${retryCount}/${maxRetries + 1}):`, request.url, error);
       }
       
       // If this is the last retry, try fallback
@@ -638,8 +788,8 @@ async function handleImageRequest(request) {
         break;
       }
       
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      // Wait before retry with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
     }
   }
   
@@ -661,7 +811,7 @@ async function handleOtherRequest(request) {
     // Try network first
     const response = await fetch(request);
     if (response.ok) {
-      return response;
+    return response;
     }
     throw new Error('Network response was not ok');
   } catch (error) {
@@ -670,7 +820,7 @@ async function handleOtherRequest(request) {
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       log(LOG_LEVEL.INFO, 'Serving cached response for:', request.url);
-      return cachedResponse;
+    return cachedResponse;
     }
     
     // If no cache available, return a proper offline response based on request type
