@@ -23,9 +23,11 @@ export function generateHeader() {
           </ul>
         </nav>
         <div class="header-controls">
-          <button id="notification-toggle" class="notification-toggle" title="Toggle Notifications">
-            <i class="fas fa-bell"></i>
-          </button>
+          ${isLoggedIn ? `
+            <button id="notification-toggle" class="notification-toggle" title="Toggle Notifications">
+              <i class="fas fa-bell"></i>
+            </button>
+          ` : ''}
           <button id="drawer-button" class="drawer-button" aria-label="Toggle navigation menu">☰</button>
         </div>
       </div>

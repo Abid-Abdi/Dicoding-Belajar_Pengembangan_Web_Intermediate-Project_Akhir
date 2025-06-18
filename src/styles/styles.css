@@ -3751,21 +3751,107 @@ body.auth-page .main-content .container {
   }
 }
 
-/* PWA Mode - Header Controls */
+/* PWA Mode - Header Improvements */
 @media (display-mode: standalone), 
        (display-mode: minimal-ui) {
+  .app-header {
+    background: var(--gradient-dark);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+    height: var(--header-height);
+  }
+
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    padding: 0 1rem;
+    max-width: 100%;
+  }
+
+  .brand-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-light);
+    text-decoration: none;
+    position: relative;
+    padding-left: 1rem;
+    transition: var(--transition);
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+
+  .brand-name:hover {
+    color: var(--light-color);
+    transform: translateY(-1px);
+  }
+
+  .brand-name::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(to bottom, var(--primary-color), var(--primary-light));
+    border-radius: 2px;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .notification-toggle {
+    background: none;
+    border: none;
+    color: var(--light-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+  }
+
+  .notification-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .notification-toggle.active {
+    color: var(--primary-light);
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .notification-toggle.disabled {
+    color: var(--text-lighter);
+    opacity: 0.6;
+  }
+
   .drawer-button {
     display: block !important;
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     color: var(--light-color);
     cursor: pointer;
     transition: var(--transition);
     padding: 0.5rem;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3774,22 +3860,6 @@ body.auth-page .main-content .container {
   .drawer-button:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: scale(1.1);
-  }
-
-  .app-header {
-    background: var(--gradient-dark);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: var(--shadow-md);
-  }
-
-  .main-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: var(--header-height);
-    padding: 0 1rem;
   }
 
   .navigation-drawer {
@@ -3926,5 +3996,99 @@ body.auth-page .main-content .container {
   
   .navigation-drawer.open {
     display: block;
+  }
+}
+
+/* Web Mode - Header (non-PWA) - Override PWA styles */
+@media not (display-mode: standalone) and not (display-mode: minimal-ui) {
+  .app-header {
+    background: var(--gradient-dark);
+    color: var(--light-color);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(to right, rgba(31, 41, 55, 0.98), rgba(31, 41, 55, 0.92));
+  }
+
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: var(--header-height);
+    padding: 0 24px;
+  }
+
+  .brand-name {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary-light);
+    text-decoration: none;
+    position: relative;
+    padding-left: 1.2rem;
+    transition: var(--transition);
+    letter-spacing: -0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .brand-name:hover {
+    color: var(--light-color);
+    transform: translateY(-1px);
+  }
+
+  .brand-name::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 24px;
+    background: linear-gradient(to bottom, var(--primary-color), var(--primary-light));
+    border-radius: 3px;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .notification-toggle {
+    background: none;
+    border: none;
+    color: var(--light-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+  }
+
+  .notification-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .notification-toggle.active {
+    color: var(--primary-light);
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .notification-toggle.disabled {
+    color: var(--text-lighter);
+    opacity: 0.6;
+  }
+
+  .drawer-button {
+    display: none;
   }
 }
