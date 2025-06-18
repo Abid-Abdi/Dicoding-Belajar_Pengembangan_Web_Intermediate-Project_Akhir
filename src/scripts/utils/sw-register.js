@@ -4,7 +4,12 @@ import CONFIG from '../config.js';
 export const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      // Use absolute path for better compatibility with Netlify
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+        updateViaCache: 'none' // Always check for updates
+      });
+      
       console.log('Service Worker registered successfully:', registration);
       
       // Check for updates
@@ -18,10 +23,29 @@ export const registerServiceWorker = async () => {
         });
       });
       
+      // Handle service worker errors
+      registration.addEventListener('error', (error) => {
+        console.error('Service Worker error:', error);
+      });
+      
       return registration;
     } catch (error) {
       console.error('Service Worker registration failed:', error);
+      
+      // Try alternative registration if the first one fails
+      try {
+        const registration = await navigator.serviceWorker.register('./sw.js', {
+          scope: './',
+          updateViaCache: 'none'
+        });
+        console.log('Service Worker registered with alternative path:', registration);
+        return registration;
+      } catch (altError) {
+        console.error('Alternative Service Worker registration also failed:', altError);
+      }
     }
+  } else {
+    console.warn('Service Worker not supported in this browser');
   }
 };
 
@@ -34,6 +58,20 @@ const showUpdateNotification = () => {
       <p>New version available!</p>
       <button onclick="window.location.reload()">Update Now</button>
     </div>
+  `;
+  
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    padding: 15px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    font-size: 14px;
   `;
   
   document.body.appendChild(notification);

@@ -49,9 +49,40 @@ export async function userRegister({name, email, password}) {
       body: JSON.stringify({name, email, password}),
     });
     
-    return await handleResponse(response);
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      // Try to parse error response as JSON
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Registration failed with status ${response.status}`);
+      } catch (jsonError) {
+        // If JSON parsing fails, check if it's an offline response
+        if (response.status === 503) {
+          throw new Error('Unable to register. Please check your internet connection and try again.');
+        }
+        throw new Error(`Registration failed with status ${response.status}`);
+      }
+    }
+    
+    // Parse successful response
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Error during registration:', error);
+    
+    // Handle specific error types
+    if (error.message.includes('Failed to fetch') || 
+        error.message.includes('NetworkError') ||
+        error.message.includes('TypeError')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
+    }
+    
+    // Handle offline service worker responses
+    if (error.message.includes('Unable to register') ||
+        error.message.includes('No internet connection')) {
+      throw new Error('Unable to register. Please check your internet connection and try again.');
+    }
+    
     throw new Error(error.message || 'Failed to register. Please check your internet connection.');
   }
 }
@@ -69,11 +100,23 @@ export async function userLogin({email, password}) {
       }),
     });
     
-    const data = await response.json();
-    
+    // Check if response is ok before trying to parse JSON
     if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
+      // Try to parse error response as JSON
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Login failed with status ${response.status}`);
+      } catch (jsonError) {
+        // If JSON parsing fails, check if it's an offline response
+        if (response.status === 503) {
+          throw new Error('Unable to authenticate. Please check your internet connection and try again.');
+        }
+        throw new Error(`Login failed with status ${response.status}`);
+      }
     }
+    
+    // Parse successful response
+    const data = await response.json();
     
     // Store token and user data after successful login
     if (data.loginResult && data.loginResult.token) {
@@ -85,9 +128,20 @@ export async function userLogin({email, password}) {
     return data;
   } catch (error) {
     console.error('Error during login:', error);
-    if (error.message.includes('Failed to fetch')) {
-      throw new Error('Network error. Please check your internet connection.');
+    
+    // Handle specific error types
+    if (error.message.includes('Failed to fetch') || 
+        error.message.includes('NetworkError') ||
+        error.message.includes('TypeError')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
+    
+    // Handle offline service worker responses
+    if (error.message.includes('Unable to authenticate') ||
+        error.message.includes('No internet connection')) {
+      throw new Error('Unable to authenticate. Please check your internet connection and try again.');
+    }
+    
     throw new Error(error.message || 'Failed to login. Please check your credentials.');
   }
 }
