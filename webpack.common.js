@@ -9,7 +9,6 @@ module.exports = {
   output: {
     filename: '[name].bundle.js',
     path: path.resolve(__dirname, 'dist'),
-    clean: true,
   },
   module: {
     rules: [
@@ -22,7 +21,6 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, 'src/index.html'),
-      filename: 'index.html',
     }),
     new CopyWebpackPlugin({
       patterns: [
@@ -49,10 +47,6 @@ module.exports = {
         {
           from: path.resolve(__dirname, 'src/public/favicon.png'),
           to: path.resolve(__dirname, 'dist/favicon.png'),
-        },
-        {
-          from: path.resolve(__dirname, 'public/_redirects'),
-          to: path.resolve(__dirname, 'dist/_redirects'),
         },
       ],
     }),
