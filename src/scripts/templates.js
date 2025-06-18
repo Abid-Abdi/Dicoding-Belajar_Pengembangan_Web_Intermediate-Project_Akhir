@@ -104,10 +104,25 @@ export function setupHeader() {
   const navDrawer = document.getElementById('navigation-drawer');
   const logoutLink = document.getElementById('logout-link');
 
+  // Check if running in PWA mode
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                window.matchMedia('(display-mode: minimal-ui)').matches ||
+                window.navigator.standalone === true;
+
   // Toggle drawer
   if (drawerButton) {
     drawerButton.addEventListener('click', () => {
       navDrawer.classList.toggle('open');
+      
+      // Add body scroll lock for PWA
+      if (isPWA) {
+        if (navDrawer.classList.contains('open')) {
+          document.body.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+        }
+      }
     });
   }
 
@@ -123,7 +138,30 @@ export function setupHeader() {
   document.addEventListener('click', (event) => {
     if (navDrawer && !navDrawer.contains(event.target) && !drawerButton.contains(event.target)) {
       navDrawer.classList.remove('open');
+      if (isPWA) {
+        document.body.style.overflow = '';
+      }
     }
   });
+
+  // Close drawer when pressing Escape key
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && navDrawer && navDrawer.classList.contains('open')) {
+      navDrawer.classList.remove('open');
+      if (isPWA) {
+        document.body.style.overflow = '';
+      }
+    }
+  });
+
+  // Close drawer when navigating to a new page (for PWA)
+  if (isPWA) {
+    window.addEventListener('hashchange', () => {
+      if (navDrawer && navDrawer.classList.contains('open')) {
+        navDrawer.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    });
+  }
 }
 

@@ -7,7 +7,6 @@ export default class RegisterPage {
 
     async render() {
         return `
-          <section class="container">
             <div class="register-container">
                 <h1>Register</h1>
                 <form id="register-form">
@@ -31,7 +30,6 @@ export default class RegisterPage {
                     <p>Already have an account? <a href="#/login">Login</a></p>
                 </form>
             </div>
-          </section>
         `;
     }
     
@@ -80,8 +78,20 @@ export default class RegisterPage {
         const form = document.getElementById('register-form');
         form.insertBefore(successDiv, form.firstChild);
         
-        // Navigate to login page after 2 seconds
+        // Navigate to login page after 2 seconds with smooth transition
         setTimeout(() => {
+            // Remove auth page styling immediately
+            document.body.classList.remove('auth-page');
+            
+            // Show footer immediately
+            const footer = document.querySelector('.footer');
+            if (footer) {
+                footer.classList.remove('hidden');
+                footer.style.opacity = '1';
+                footer.style.transform = 'translateY(0)';
+            }
+            
+            // Navigate to login page immediately
             window.location.href = '#/login';
         }, 2000);
     }

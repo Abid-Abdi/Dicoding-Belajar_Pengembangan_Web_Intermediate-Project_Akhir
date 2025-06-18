@@ -1362,12 +1362,13 @@ button[type="submit"]:active {
 
 /* Footer Styles - Enhanced */
 .footer {
-  background: var(--gradient-dark);
-  color: var(--light-color);
-  padding: 4rem 0 0;
-  margin-top: 4rem;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #f9fafb;
+  padding: 3rem 0 1rem;
   position: relative;
   overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-top: auto;
 }
 
 .footer::before {
@@ -1376,19 +1377,27 @@ button[type="submit"]:active {
   top: 0;
   left: 0;
   width: 100%;
-  height: 4px;
-  background: linear-gradient(to right, var(--primary-color), var(--primary-light));
+  height: 100%;
+  background: linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+  animation: shimmer 3s ease-in-out infinite;
 }
 
-.footer::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: url("data:image/svg+xml,%3Csvg width=%2760%27 height=%2760%27 viewBox=%270 0 60 60%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cg fill=%27none%27 fill-rule=%27evenodd%27%3E%3Cg fill=%27%23ffffff%27 fill-opacity=%270.05%27%3E%3Cpath d=%27M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  opacity: 0.1;
+@keyframes shimmer {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+/* Footer animation for smooth show/hide */
+.footer {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.footer.hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
 }
 
 .footer-content {
@@ -2313,11 +2322,11 @@ button[type="submit"]:active {
 
 /* Notification Section */
 .notification-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border-radius: 15px;
   padding: 25px;
   margin: 30px 0;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 32px rgba(67, 97, 238, 0.25);
   position: relative;
   overflow: hidden;
 }
@@ -2344,6 +2353,7 @@ button[type="submit"]:active {
 .notification-icon {
   font-size: 2.5rem;
   animation: bounce 2s infinite;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .notification-text {
@@ -2364,7 +2374,7 @@ button[type="submit"]:active {
 }
 
 .subscribe-btn {
-  background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+  background: linear-gradient(45deg, #10b981, #059669);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -2376,15 +2386,15 @@ button[type="submit"]:active {
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
   min-width: 200px;
   justify-content: center;
 }
 
 .subscribe-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
-  background: linear-gradient(45deg, #ee5a24, #ff6b6b);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  background: linear-gradient(45deg, #059669, #10b981);
 }
 
 .subscribe-btn:disabled {
@@ -2629,5 +2639,918 @@ button[type="submit"]:active {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* PWA Mode Specific Styles */
+@media (display-mode: standalone), 
+       (display-mode: window-controls-overlay), 
+       (display-mode: minimal-ui) {
+  
+  /* Fix burger menu positioning for PWA */
+  .drawer-button {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    right: auto;
+    z-index: 1001;
+    background: rgba(31, 41, 55, 0.9);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .drawer-button:hover {
+    background: rgba(31, 41, 55, 1);
+    transform: scale(1.05);
+  }
+
+  /* Adjust header for PWA */
+  .app-header {
+    padding-left: 70px; /* Make space for burger menu */
+  }
+
+  .main-header {
+    padding-left: 0;
+  }
+
+  /* Fix navigation drawer for PWA */
+  .navigation-drawer {
+    position: fixed;
+    top: 0;
+    left: -300px; /* Slide from left instead of right */
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(to bottom, rgba(31, 41, 55, 0.98), rgba(31, 41, 55, 0.95));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 5px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 80px 1.5rem 1.5rem 1.5rem; /* Add top padding for status bar */
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+
+  .navigation-drawer.open {
+    left: 0; /* Slide to left */
+  }
+
+  /* Improve notification section for PWA */
+  .notification-section {
+    background: var(--gradient-primary);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 20px rgba(67, 97, 238, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .notification-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    animation: pulse 4s ease-in-out infinite;
+  }
+
+  .notification-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .notification-icon {
+    font-size: 2rem;
+    animation: bounce 3s infinite;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .notification-text h3 {
+    color: white;
+    margin: 0 0 6px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .notification-text p {
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  /* Improve subscribe button for PWA */
+  .subscribe-btn {
+    background: linear-gradient(45deg, #10b981, #059669);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25);
+    min-width: 160px;
+    justify-content: center;
+  }
+
+  .subscribe-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    background: linear-gradient(45deg, #059669, #10b981);
+  }
+
+  .btn-icon {
+    font-size: 1rem;
+  }
+
+  .btn-text {
+    font-weight: 600;
+  }
+
+  /* Fix notification popup positioning for PWA */
+  .notification-message {
+    position: fixed;
+    top: 80px; /* Below status bar */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1002; /* Higher than burger menu */
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    font-size: 13px;
+    max-width: 350px;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .notification-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .notification-close:hover {
+    opacity: 1;
+  }
+
+  /* Improve story cards for PWA */
+  .story-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .story-content {
+    padding: 1rem;
+  }
+
+  .story-name {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .story-description {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  /* Improve welcome section for PWA */
+  .welcome-section {
+    padding: 2rem 1rem;
+  }
+
+  .welcome-section h1 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .welcome-message {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Improve action buttons for PWA */
+  .action-buttons {
+    gap: 0.8rem;
+  }
+
+  .action-buttons .btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.9rem;
+    min-width: 140px;
+  }
+
+  /* Improve container spacing for PWA */
+  .container {
+    padding: 0 1rem;
+  }
+
+  /* Improve story list for PWA */
+  .story-list {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+
+  /* Improve camera container for PWA */
+  .camera-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .camera-preview-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Improve form inputs for PWA */
+  .input-field {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .input-form-group label {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Improve submit button for PWA */
+  button[type="submit"] {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+  }
+
+  /* Improve map for PWA */
+  #map {
+    height: 300px;
+    border-radius: 8px;
+  }
+
+  /* Improve footer for PWA */
+  .footer {
+    padding: 2rem 1rem;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  /* Improve network status for PWA */
+  .network-status {
+    top: 70px;
+    right: 15px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  /* Improve PWA debug status for PWA */
+  .pwa-debug-status {
+    bottom: 15px;
+    right: 15px;
+    padding: 12px;
+    font-size: 11px;
+    max-width: 250px;
+  }
+
+  /* Improve offline capabilities status for PWA */
+  .offline-capabilities-status {
+    bottom: 15px;
+    right: 15px;
+    padding: 12px;
+    font-size: 11px;
+    max-width: 250px;
+  }
+
+  /* Improve sync notifications for PWA */
+  .sync-notification,
+  .sync-success-notification,
+  .sync-error-notification {
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 16px;
+    font-size: 13px;
+    max-width: 350px;
+  }
+
+  /* Improve update notification for PWA */
+  .update-notification {
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 16px;
+    font-size: 13px;
+    max-width: 350px;
+  }
+
+  /* Improve PWA install prompt for PWA */
+  .pwa-install-prompt {
+    top: 80px;
+    right: 15px;
+    padding: 12px;
+    font-size: 12px;
+    max-width: 280px;
+  }
+
+  .pwa-install-content h4 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .pwa-install-content p {
+    font-size: 0.85rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .pwa-install-actions button {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Additional PWA improvements for very small screens */
+@media (display-mode: standalone) and (max-width: 360px) {
+  .drawer-button {
+    top: 10px;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .app-header {
+    padding-left: 60px;
+  }
+
+  .navigation-drawer {
+    width: 260px;
+    padding: 70px 1rem 1rem 1rem;
+  }
+
+  .notification-section {
+    padding: 15px;
+    margin: 15px 0;
+  }
+
+  .notification-content {
+    gap: 12px;
+  }
+
+  .notification-icon {
+    font-size: 1.8rem;
+  }
+
+  .notification-text h3 {
+    font-size: 1.1rem;
+  }
+
+  .notification-text p {
+    font-size: 0.85rem;
+  }
+
+  .subscribe-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    min-width: 140px;
+  }
+
+  .story-list {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .welcome-section h1 {
+    font-size: 1.6rem;
+  }
+
+  .welcome-message {
+    font-size: 0.9rem;
+  }
+
+  .action-buttons .btn {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.85rem;
+    min-width: 120px;
+  }
+}
+
+/* Fix notification popup positioning to avoid blocking menu button */
+@media (display-mode: standalone), 
+       (display-mode: window-controls-overlay), 
+       (display-mode: minimal-ui) {
+  
+  /* Ensure notification popups don't block the burger menu */
+  .notification-message {
+    top: 80px !important; /* Below status bar and burger menu */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 1002 !important; /* Higher than burger menu but lower than drawer */
+    max-width: calc(100vw - 30px) !important; /* Account for burger menu space */
+    margin: 0 15px !important;
+  }
+
+  /* Adjust notification section for better PWA experience */
+  .notification-section {
+    margin: 15px 0 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 15px rgba(102, 126, 234, 0.15) !important;
+  }
+
+  .notification-section::before {
+    animation: pulse 5s ease-in-out infinite !important; /* Slower animation */
+  }
+
+  /* Make subscribe button less prominent */
+  .subscribe-btn {
+    background: linear-gradient(45deg, #10b981, #059669) !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+    border-radius: 18px !important;
+    padding: 8px 16px !important;
+    font-size: 0.85rem !important;
+    min-width: 150px !important;
+  }
+
+  .subscribe-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35) !important;
+  }
+
+  /* Improve notification icon */
+  .notification-icon {
+    font-size: 1.8rem !important;
+    animation: bounce 4s infinite !important; /* Slower animation */
+    color: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  /* Improve notification text */
+  .notification-text h3 {
+    font-size: 1.1rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .notification-text p {
+    font-size: 0.85rem !important;
+    line-height: 1.3 !important;
+    opacity: 0.9 !important;
+  }
+
+  /* Ensure all other notifications don't block menu */
+  .sync-notification,
+  .sync-success-notification,
+  .sync-error-notification,
+  .update-notification {
+    top: 80px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 1002 !important;
+    max-width: calc(100vw - 30px) !important;
+    margin: 0 15px !important;
+  }
+
+  /* Adjust PWA install prompt position */
+  .pwa-install-prompt {
+    top: 80px !important;
+    right: 15px !important;
+    z-index: 1002 !important;
+    max-width: calc(100vw - 30px) !important;
+  }
+}
+
+/* Additional fixes for very small screens in PWA mode */
+@media (display-mode: standalone) and (max-width: 360px) {
+  .notification-message,
+  .sync-notification,
+  .sync-success-notification,
+  .sync-error-notification,
+  .update-notification {
+    top: 70px !important;
+    max-width: calc(100vw - 20px) !important;
+    margin: 0 10px !important;
+    font-size: 12px !important;
+    padding: 10px 12px !important;
+  }
+
+  .pwa-install-prompt {
+    top: 70px !important;
+    right: 10px !important;
+    max-width: calc(100vw - 20px) !important;
+    font-size: 11px !important;
+    padding: 10px !important;
+  }
+
+  .notification-section {
+    margin: 10px 0 !important;
+    padding: 12px !important;
+  }
+
+  .notification-content {
+    gap: 10px !important;
+  }
+
+  .notification-icon {
+    font-size: 1.6rem !important;
+  }
+
+  .notification-text h3 {
+    font-size: 1rem !important;
+  }
+
+  .notification-text p {
+    font-size: 0.8rem !important;
+  }
+
+  .subscribe-btn {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+    min-width: 130px !important;
+  }
+}
+
+/* Login/Register page specific styles */
+body.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden; /* Prevent scrolling */
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure header is not affected by auth page styling */
+body.auth-page .app-header,
+body.auth-page .main-header,
+body.auth-page .brand-name,
+body.auth-page .navigation-drawer,
+body.auth-page .nav-list,
+body.auth-page .drawer-button {
+  /* Keep header styling unchanged */
+  position: relative;
+  z-index: 1000;
+}
+
+body.auth-page .main-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  min-height: calc(100vh - 80px); /* Account for header */
+  max-height: calc(100vh - 80px); /* Prevent overflow */
+  overflow: hidden; /* Prevent scrolling */
+  margin: 0;
+}
+
+body.auth-page .footer {
+  display: none !important;
+}
+
+/* Override container styles for auth pages - only for main content */
+body.auth-page .main-content .container {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Login/Register Container Styles */
+.login-container,
+.register-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  max-height: calc(100vh - 120px); /* Account for header and padding */
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.login-container::before,
+.register-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(to right, #667eea, #764ba2);
+}
+
+.login-container h1,
+.register-container h1 {
+  text-align: center;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.login-container form,
+.register-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  overflow-y: auto; /* Allow scrolling within form if needed */
+  padding-right: 0.5rem; /* Space for scrollbar */
+  margin: 0;
+}
+
+.login-container form::-webkit-scrollbar,
+.register-container form::-webkit-scrollbar {
+  width: 4px;
+}
+
+.login-container form::-webkit-scrollbar-track,
+.register-container form::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.login-container form::-webkit-scrollbar-thumb,
+.register-container form::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+}
+
+.login-container .input-form-group,
+.register-container .input-form-group {
+  position: relative;
+  flex-shrink: 0; /* Prevent shrinking */
+  margin: 0;
+}
+
+.login-container label,
+.register-container label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.login-container .input-field,
+.register-container .input-field {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.8);
+  box-sizing: border-box;
+}
+
+.login-container .input-field:focus,
+.register-container .input-field:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+}
+
+.login-container button[type="submit"],
+.register-container button[type="submit"] {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 0.9rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+  flex-shrink: 0; /* Prevent shrinking */
+  width: 100%;
+}
+
+.login-container button[type="submit"]:hover,
+.register-container button[type="submit"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.login-container button[type="submit"]:disabled,
+.register-container button[type="submit"]:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-container p,
+.register-container p {
+  text-align: center;
+  margin-top: 1rem;
+  color: #6b7280;
+  font-size: 0.85rem;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.login-container a,
+.register-container a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.login-container a:hover,
+.register-container a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+/* Error and Success Messages */
+.error-message,
+.success-message {
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.error-message {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.success-message {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* PWA mode adjustments for auth pages */
+@media (display-mode: standalone), 
+       (display-mode: window-controls-overlay), 
+       (display-mode: minimal-ui) {
+  
+  body.auth-page .main-content {
+    padding: 1rem;
+    min-height: calc(100vh - 60px); /* Account for header */
+    max-height: calc(100vh - 60px); /* Prevent overflow */
+  }
+  
+  /* Ensure footer is hidden on auth pages in PWA */
+  body.auth-page .footer {
+    display: none !important;
+  }
+
+  .login-container,
+  .register-container {
+    padding: 1.5rem;
+    max-width: 350px;
+    max-height: calc(100vh - 100px); /* Account for header and padding */
+  }
+
+  .login-container h1,
+  .register-container h1 {
+    font-size: 1.6rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .login-container form,
+  .register-container form {
+    gap: 0.8rem;
+  }
+
+  .login-container .input-field,
+  .register-container .input-field {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .login-container button[type="submit"],
+  .register-container button[type="submit"] {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Small screen adjustments */
+@media (max-width: 480px) {
+  body.auth-page .main-content {
+    padding: 0.5rem;
+  }
+
+  .login-container,
+  .register-container {
+    padding: 1.5rem;
+    margin: 0 0.5rem;
+    max-height: calc(100vh - 100px);
+  }
+
+  .login-container h1,
+  .register-container h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .login-container form,
+  .register-container form {
+    gap: 0.8rem;
+  }
+
+  .login-container .input-field,
+  .register-container .input-field {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .login-container button[type="submit"],
+  .register-container button[type="submit"] {
+    padding: 0.7rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Extra small screen adjustments */
+@media (max-width: 360px) {
+  body.auth-page .main-content {
+    padding: 0.25rem;
+  }
+
+  .login-container,
+  .register-container {
+    padding: 1rem;
+    margin: 0 0.25rem;
+    max-height: calc(100vh - 80px);
+  }
+
+  .login-container h1,
+  .register-container h1 {
+    font-size: 1.3rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .login-container form,
+  .register-container form {
+    gap: 0.6rem;
+  }
+
+  .login-container .input-field,
+  .register-container .input-field {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .login-container button[type="submit"],
+  .register-container button[type="submit"] {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .login-container p,
+  .register-container p {
+    font-size: 0.75rem;
+    margin-top: 0.8rem;
   }
 }

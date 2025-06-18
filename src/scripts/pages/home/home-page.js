@@ -20,14 +20,14 @@ export default class HomePage {
         <!-- Notification Subscription Section -->
         <div class="notification-section">
           <div class="notification-content">
-            <div class="notification-icon">🔔</div>
+            <div class="notification-icon">📲</div>
             <div class="notification-text">
-              <h3>Stay Updated!</h3>
-              <p>Get notified when new stories are added to the app</p>
+              <h3>Get Notifications</h3>
+              <p>Stay updated with new stories and app updates</p>
             </div>
             <button id="subscribe-notifications" class="btn subscribe-btn">
-              <span class="btn-icon">📱</span>
-              <span class="btn-text">Subscribe to Notifications</span>
+              <span class="btn-icon">🔔</span>
+              <span class="btn-text">Enable Notifications</span>
             </button>
           </div>
         </div>
@@ -262,8 +262,8 @@ export default class HomePage {
 
     subscribeButton.disabled = false;
     subscribeButton.innerHTML = `
-      <span class="btn-icon">📱</span>
-      <span class="btn-text">Subscribe to Notifications</span>
+      <span class="btn-icon">🔔</span>
+      <span class="btn-text">Enable Notifications</span>
     `;
     subscribeButton.style.backgroundColor = '';
   }
