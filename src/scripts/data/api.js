@@ -12,6 +12,14 @@ const ENDPOINTS = {
 // Initialize database helper
 const db = new DatabaseHelper();
 
+// Helper function to check if running in PWA mode
+const isPWA = () => {
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+         window.matchMedia('(display-mode: minimal-ui)').matches ||
+         window.navigator.standalone === true;
+};
+
 // Helper function to get token
 const getToken = () => {
   const token = localStorage.getItem('token');
@@ -52,27 +60,28 @@ export async function userRegister({name, email, password}) {
     // Check if response is JSON before trying to parse
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Server returned non-JSON response. Please check your internet connection.');
+      // If response is not JSON, it might be an offline error from service worker
+      const textResponse = await response.text();
+      if (textResponse.includes('Offline')) {
+        throw new Error('No internet connection. Please check your connection and try again.');
+      }
+      throw new Error('Server returned invalid response format. Please try again.');
     }
     
     return await handleResponse(response);
   } catch (error) {
     console.error('Error during registration:', error);
-    
-    // Handle specific error cases
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error('Network error. Please check your internet connection.');
+    if (error.message.includes('No internet connection')) {
+      throw new Error('No internet connection. Please check your connection and try again.');
     }
-    
-    if (error.message.includes('non-JSON response')) {
-      throw new Error('Server error. Please check your internet connection and try again.');
-    }
-    
     throw new Error(error.message || 'Failed to register. Please check your internet connection.');
   }
 }
 
 export async function userLogin({email, password}) {
+  const pwaMode = isPWA();
+  console.log(`🔐 Login attempt - PWA Mode: ${pwaMode}, Online: ${navigator.onLine}`);
+  
   try {
     const response = await fetch(ENDPOINTS.LOGIN, {
       method: "POST",
@@ -86,13 +95,29 @@ export async function userLogin({email, password}) {
       }),
     });
     
+    console.log(`📡 Login response - Status: ${response.status}, Type: ${response.type}, URL: ${response.url}`);
+    
     // Check if response is JSON before trying to parse
     const contentType = response.headers.get('content-type');
+    console.log(`📋 Response content-type: ${contentType}`);
+    
     if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Server returned non-JSON response. Please check your internet connection.');
+      // If response is not JSON, it might be an offline error from service worker
+      const textResponse = await response.text();
+      console.error(`❌ Non-JSON response received: ${textResponse.substring(0, 100)}...`);
+      
+      if (textResponse.includes('Offline')) {
+        throw new Error('No internet connection. Please check your connection and try again.');
+      }
+      throw new Error('Server returned invalid response format. Please try again.');
     }
     
     const data = await response.json();
+    console.log(`✅ Login response parsed successfully:`, { 
+      hasLoginResult: !!data.loginResult, 
+      hasToken: !!(data.loginResult && data.loginResult.token),
+      pwaMode: pwaMode 
+    });
     
     if (!response.ok) {
       throw new Error(data.message || 'Login failed');
@@ -103,21 +128,18 @@ export async function userLogin({email, password}) {
       localStorage.setItem('token', data.loginResult.token);
       localStorage.setItem('user', JSON.stringify(data.loginResult));
       dispatchAuthStateChange(); // Dispatch event after successful login
+      console.log(`🎉 Login successful - Token stored, PWA Mode: ${pwaMode}`);
     }
     
     return data;
   } catch (error) {
-    console.error('Error during login:', error);
-    
-    // Handle specific error cases
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+    console.error(`❌ Login error - PWA Mode: ${pwaMode}, Error:`, error);
+    if (error.message.includes('Failed to fetch')) {
       throw new Error('Network error. Please check your internet connection.');
     }
-    
-    if (error.message.includes('non-JSON response')) {
-      throw new Error('Server error. Please check your internet connection and try again.');
+    if (error.message.includes('No internet connection')) {
+      throw new Error('No internet connection. Please check your connection and try again.');
     }
-    
     throw new Error(error.message || 'Failed to login. Please check your credentials.');
   }
 }

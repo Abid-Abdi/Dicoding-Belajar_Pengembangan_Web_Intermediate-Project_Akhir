@@ -126,8 +126,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle API requests with stale-while-revalidate (including login/register)
-  if ((url.pathname.includes('/stories') || url.pathname.includes('/login') || url.pathname.includes('/register')) && url.origin === 'https://story-api.dicoding.dev') {
+  // Check if this is a PWA context (standalone mode)
+  const isPWA = self.matchMedia('(display-mode: standalone)').matches || 
+                self.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                self.matchMedia('(display-mode: minimal-ui)').matches;
+
+  // Handle authentication requests (login/register) - always network first for PWA
+  if (url.pathname.includes('/login') || url.pathname.includes('/register')) {
+    log(LOG_LEVEL.DEBUG, `Handling auth request (${isPWA ? 'PWA' : 'browser'}):`, request.url);
+    event.respondWith(handleAuthRequest(request, isPWA));
+    return;
+  }
+
+  // Handle API requests with stale-while-revalidate
+  if (url.pathname.includes('/stories') && url.origin === 'https://story-api.dicoding.dev') {
     log(LOG_LEVEL.DEBUG, 'Handling API request:', request.url);
     event.respondWith(handleApiRequest(request));
     return;
@@ -158,6 +170,59 @@ self.addEventListener('fetch', (event) => {
   log(LOG_LEVEL.DEBUG, 'Handling other request:', request.url);
   event.respondWith(handleOtherRequest(request));
 });
+
+// Network-only strategy for authentication requests (login/register)
+async function handleAuthRequest(request, isPWA = false) {
+  try {
+    // For PWA, add additional headers to ensure proper request handling
+    const requestOptions = {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      mode: 'cors',
+      credentials: 'same-origin'
+    };
+
+    // Try network first for auth requests
+    const response = await fetch(request, requestOptions);
+    
+    // Log response details for debugging
+    log(LOG_LEVEL.DEBUG, `Auth response status: ${response.status}, type: ${response.type}, url: ${response.url}`);
+    
+    if (response.ok) {
+      return response;
+    }
+    
+    // If response is not ok, try to get error details
+    try {
+      const errorData = await response.json();
+      log(LOG_LEVEL.WARN, 'Auth request failed with error:', errorData);
+      return response; // Return the original response with error
+    } catch (jsonError) {
+      log(LOG_LEVEL.WARN, 'Failed to parse error response as JSON:', jsonError);
+      throw new Error(`Network response was not ok: ${response.status}`);
+    }
+  } catch (error) {
+    log(LOG_LEVEL.ERROR, 'Auth request failed:', error);
+    
+    // For auth requests, return a proper JSON error response instead of plain text
+    return new Response(JSON.stringify({
+      error: 'No internet connection',
+      message: 'Please check your connection and try again. Authentication requires internet connection.',
+      isPWA: isPWA,
+      timestamp: new Date().toISOString()
+    }), {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  }
+}
 
 // Stale-while-revalidate for API requests
 async function handleApiRequest(request) {
@@ -492,24 +557,7 @@ async function handleOtherRequest(request) {
     return cachedResponse;
     }
     
-    // If no cache available, return a proper offline response
-    // Check if this is likely an API request that expects JSON
-    const url = new URL(request.url);
-    const isApiRequest = url.hostname.includes('story-api.dicoding.dev') || 
-                        request.headers.get('accept')?.includes('application/json') ||
-                        request.headers.get('content-type')?.includes('application/json');
-    
-    if (isApiRequest) {
-      return new Response(JSON.stringify({
-        error: 'No internet connection',
-        message: 'Please check your connection and try again'
-      }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // For non-API requests, return plain text
+    // If no cache available, return a basic offline response
     return new Response('Offline - No cached content available', {
       status: 503,
       statusText: 'Service Unavailable',

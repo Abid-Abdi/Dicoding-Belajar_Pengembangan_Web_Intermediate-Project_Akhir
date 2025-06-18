@@ -14,6 +14,19 @@ let networkStatus = null;
 document.addEventListener('DOMContentLoaded', async () => {
   app._renderPage();
   
+  // Check if running in PWA mode
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                window.matchMedia('(display-mode: minimal-ui)').matches ||
+                window.navigator.standalone === true;
+  
+  console.log(`🚀 App initialized - PWA Mode: ${isPWA}, Online: ${navigator.onLine}`);
+  
+  // Show PWA status in development
+  if (isPWA && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    showPWAStatus();
+  }
+  
   // Register service worker for PWA
   try {
     const registration = await registerServiceWorker();
@@ -295,6 +308,32 @@ function addNotificationPermissionButton() {
   });
   
   document.body.appendChild(notificationButton);
+}
+
+// Show PWA status for debugging
+function showPWAStatus() {
+  const statusDiv = document.createElement('div');
+  statusDiv.className = 'pwa-debug-status';
+  
+  const updateStatus = () => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                  window.matchMedia('(display-mode: minimal-ui)').matches ||
+                  window.navigator.standalone === true;
+    
+    statusDiv.innerHTML = `
+      <div>📱 PWA: ${isPWA ? 'YES' : 'NO'}</div>
+      <div>🌐 Online: ${navigator.onLine ? 'YES' : 'NO'}</div>
+      <div>🔧 Dev: ${window.location.hostname === 'localhost' ? 'YES' : 'NO'}</div>
+    `;
+  };
+  
+  updateStatus();
+  document.body.appendChild(statusDiv);
+  
+  // Update status when network changes
+  window.addEventListener('online', updateStatus);
+  window.addEventListener('offline', updateStatus);
 }
 
 window.addEventListener('hashchange', () => {
