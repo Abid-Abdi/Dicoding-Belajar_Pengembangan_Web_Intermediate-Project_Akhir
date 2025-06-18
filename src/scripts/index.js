@@ -47,6 +47,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Add notification permission request button to the UI
   addNotificationPermissionButton();
   
+  // Setup notification toggle
+  setupNotificationToggle();
+  
+  // Make function available globally for templates.js
+  window.setupNotificationToggle = setupNotificationToggle;
+  
   // Setup online/offline event listeners
   setupNetworkEventListeners();
   
@@ -455,6 +461,103 @@ function showOfflineStatus(capabilities) {
       statusDiv.parentNode.removeChild(statusDiv);
     }
   }, 10000);
+}
+
+// Setup notification toggle functionality
+function setupNotificationToggle() {
+  const notificationToggle = document.getElementById('notification-toggle');
+  if (!notificationToggle) return;
+
+  // Check current notification permission status
+  updateNotificationToggleState();
+
+  notificationToggle.addEventListener('click', async () => {
+    try {
+      if (Notification.permission === 'default') {
+        // Request permission
+        const permission = await Notification.requestPermission();
+        updateNotificationToggleState();
+        
+        if (permission === 'granted') {
+          showNotification('Notifications enabled!', 'success');
+          // Subscribe to push notifications
+          await subscribeToPushNotifications();
+        } else {
+          showNotification('Notifications disabled', 'error');
+        }
+      } else if (Notification.permission === 'granted') {
+        // Disable notifications (this is a simplified approach)
+        showNotification('Notifications disabled', 'info');
+        // In a real app, you might want to unsubscribe from push notifications
+      } else {
+        // Permission denied, show instructions
+        showNotification('Please enable notifications in browser settings', 'info');
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      showNotification('Failed to toggle notifications', 'error');
+    }
+  });
+}
+
+// Update notification toggle button state
+function updateNotificationToggleState() {
+  const notificationToggle = document.getElementById('notification-toggle');
+  if (!notificationToggle) return;
+
+  const icon = notificationToggle.querySelector('i');
+  
+  switch (Notification.permission) {
+    case 'granted':
+      notificationToggle.classList.add('active');
+      notificationToggle.classList.remove('disabled');
+      icon.className = 'fas fa-bell';
+      notificationToggle.title = 'Notifications enabled (click to disable)';
+      break;
+    case 'denied':
+      notificationToggle.classList.remove('active');
+      notificationToggle.classList.add('disabled');
+      icon.className = 'fas fa-bell-slash';
+      notificationToggle.title = 'Notifications blocked (enable in settings)';
+      break;
+    default:
+      notificationToggle.classList.remove('active', 'disabled');
+      icon.className = 'fas fa-bell';
+      notificationToggle.title = 'Click to enable notifications';
+      break;
+  }
+}
+
+// Show notification message
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.innerHTML = `
+    <div class="notification-content">
+      <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+      <span>${message}</span>
+      <button class="notification-close">&times;</button>
+    </div>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto remove after 3 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
+  
+  // Close button functionality
+  const closeBtn = notification.querySelector('.notification-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    });
+  }
 }
 
 

@@ -3627,3 +3627,304 @@ body.auth-page .main-content .container {
     margin-top: 0.8rem;
   }
 }
+
+/* Header Controls */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-toggle {
+  background: none;
+  border: none;
+  color: var(--light-color);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.notification-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+.notification-toggle.active {
+  color: var(--primary-light);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.notification-toggle.disabled {
+  color: var(--text-lighter);
+  opacity: 0.6;
+}
+
+/* PWA Mode - Login/Register Improvements */
+@media (display-mode: standalone), 
+       (display-mode: minimal-ui) {
+  body.auth-page {
+    background: var(--gradient-auth);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  body.auth-page .main-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    min-height: calc(100vh - var(--header-height));
+  }
+
+  body.auth-page .footer {
+    display: none;
+  }
+
+  .login-container,
+  .register-container {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .login-container h1,
+  .register-container h1 {
+    text-align: center;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+    font-weight: 700;
+  }
+
+  .login-container form,
+  .register-container form {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+  }
+
+  .login-container .input-field,
+  .register-container .input-field {
+    width: 100%;
+    padding: 0.9rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: var(--transition);
+    background: var(--light-color);
+  }
+
+  .login-container button[type="submit"],
+  .register-container button[type="submit"] {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    padding: 0.9rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 0.5rem;
+    flex-shrink: 0;
+  }
+}
+
+/* PWA Mode - Header Controls */
+@media (display-mode: standalone), 
+       (display-mode: minimal-ui) {
+  .drawer-button {
+    display: block !important;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--light-color);
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drawer-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .app-header {
+    background: var(--gradient-dark);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+  }
+
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: var(--header-height);
+    padding: 0 1rem;
+  }
+
+  .navigation-drawer {
+    position: fixed;
+    top: var(--header-height);
+    right: -300px;
+    width: 280px;
+    height: calc(100vh - var(--header-height));
+    background: var(--surface-color);
+    box-shadow: var(--shadow-lg);
+    transition: right 0.3s ease;
+    z-index: 999;
+    overflow-y: auto;
+    border-left: 1px solid var(--border-color);
+  }
+
+  .navigation-drawer.open {
+    right: 0;
+  }
+
+  .nav-list {
+    flex-direction: column;
+    padding: 1rem 0;
+    gap: 0;
+  }
+
+  .nav-list a {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+  }
+
+  .nav-list a:hover {
+    background: var(--light-darker);
+    color: var(--primary-color);
+    transform: none;
+  }
+
+  .nav-list a::after {
+    display: none;
+  }
+}
+
+/* Mobile responsive - ensure drawer button stays on right */
+@media screen and (max-width: 768px) {
+  .drawer-button {
+    display: block;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--light-color);
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drawer-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+  }
+
+  .navigation-drawer {
+    position: fixed;
+    top: var(--header-height);
+    right: -300px;
+    width: 280px;
+    height: calc(100vh - var(--header-height));
+    background: var(--surface-color);
+    box-shadow: var(--shadow-lg);
+    transition: right 0.3s ease;
+    z-index: 999;
+    overflow-y: auto;
+    border-left: 1px solid var(--border-color);
+  }
+
+  .navigation-drawer.open {
+    right: 0;
+  }
+
+  .nav-list {
+    flex-direction: column;
+    padding: 1rem 0;
+    gap: 0;
+  }
+
+  .nav-list a {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+  }
+
+  .nav-list a:hover {
+    background: var(--light-darker);
+    color: var(--primary-color);
+    transform: none;
+  }
+
+  .nav-list a::after {
+    display: none;
+  }
+}
+
+/* Ensure header controls stay on the right */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: var(--header-height);
+  padding: 0 24px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* Hide navigation drawer on mobile by default */
+@media screen and (max-width: 768px) {
+  .navigation-drawer {
+    display: none;
+  }
+  
+  .navigation-drawer.open {
+    display: block;
+  }
+}

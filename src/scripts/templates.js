@@ -22,7 +22,12 @@ export function generateHeader() {
             ${generateNavigationItems(isLoggedIn, currentPath)}
           </ul>
         </nav>
-        <button id="drawer-button" class="drawer-button" aria-label="Toggle navigation menu">☰</button>
+        <div class="header-controls">
+          <button id="notification-toggle" class="notification-toggle" title="Toggle Notifications">
+            <i class="fas fa-bell"></i>
+          </button>
+          <button id="drawer-button" class="drawer-button" aria-label="Toggle navigation menu">☰</button>
+        </div>
       </div>
     </header>
   `;
@@ -103,12 +108,18 @@ export function setupHeader() {
   const drawerButton = document.getElementById('drawer-button');
   const navDrawer = document.getElementById('navigation-drawer');
   const logoutLink = document.getElementById('logout-link');
+  const notificationToggle = document.getElementById('notification-toggle');
 
   // Check if running in PWA mode
   const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
                 window.matchMedia('(display-mode: window-controls-overlay)').matches ||
                 window.matchMedia('(display-mode: minimal-ui)').matches ||
                 window.navigator.standalone === true;
+
+  // Setup notification toggle if function exists
+  if (typeof window.setupNotificationToggle === 'function') {
+    window.setupNotificationToggle();
+  }
 
   // Toggle drawer
   if (drawerButton) {
