@@ -70,26 +70,6 @@ class App {
     setupHeader();
   }
 
-  _toggleFooter(show = true) {
-    const footer = document.querySelector('.footer');
-    const body = document.body;
-    
-    if (footer) {
-      if (show) {
-        footer.classList.remove('hidden');
-        body.classList.remove('auth-page');
-      } else {
-        footer.classList.add('hidden');
-        body.classList.add('auth-page');
-      }
-    }
-  }
-
-  _shouldHideFooter(path) {
-    // Hide footer for login and register pages
-    return path === '/login' || path === '/register';
-  }
-
   async _renderPage() {
     const mainContent = document.querySelector('#main-content');
     const hash = window.location.hash.slice(1);
@@ -99,60 +79,10 @@ class App {
     // Use getRoute to handle 404 pages
     const page = getRoute(url);
 
-    // Check if we're transitioning from auth page to home page
-    const isFromAuthToHome = this._currentPage && 
-                           (this._currentPage.constructor.name === 'LoginPage' || 
-                            this._currentPage.constructor.name === 'RegisterPage') &&
-                           url === '/';
+    // Show loader
+    mainContent.innerHTML = generateContentLoader();
 
     try {
-      // Special handling for auth to home transition
-      if (isFromAuthToHome) {
-        // Remove auth page styling immediately
-        document.body.classList.remove('auth-page');
-        
-        // Show footer immediately
-        const footer = document.querySelector('.footer');
-        if (footer) {
-          footer.classList.remove('hidden');
-          footer.style.opacity = '1';
-          footer.style.transform = 'translateY(0)';
-        }
-        
-        // Render home page content directly
-        mainContent.innerHTML = await page.render();
-        
-        // Store current page instance
-        this._currentPage = page;
-        
-        // Run afterRender
-        await page.afterRender();
-        
-        // Add fade-in animation to main content
-        mainContent.style.opacity = '0';
-        mainContent.style.transform = 'translateY(20px)';
-        
-        // Trigger reflow
-        mainContent.offsetHeight;
-        
-        // Animate in
-        mainContent.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-        mainContent.style.opacity = '1';
-        mainContent.style.transform = 'translateY(0)';
-        
-        // Clean up styles after animation
-        setTimeout(() => {
-          mainContent.style.transition = '';
-          mainContent.style.opacity = '';
-          mainContent.style.transform = '';
-        }, 400);
-        
-        return;
-      }
-
-      // Show loader for other transitions
-      mainContent.innerHTML = generateContentLoader();
-
       // Start view transition if supported
       if (document.startViewTransition) {
         // Create a new transition
@@ -165,9 +95,6 @@ class App {
           
           // Run afterRender
           await page.afterRender();
-          
-          // Toggle footer based on current page
-          this._toggleFooter(!this._shouldHideFooter(url));
         });
 
         // Wait for the transition to complete
@@ -180,9 +107,6 @@ class App {
         this._currentPage = page;
         
         await page.afterRender();
-        
-        // Toggle footer based on current page
-        this._toggleFooter(!this._shouldHideFooter(url));
       }
     } catch (error) {
       console.error('Error rendering page:', error);

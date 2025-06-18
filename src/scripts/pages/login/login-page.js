@@ -7,6 +7,7 @@ export default class LoginPage {
 
     async render() {
         return `
+          <section class="container">
             <div class="login-container">
                 <h1>Login</h1>
                 <form id="login-form">
@@ -22,6 +23,7 @@ export default class LoginPage {
                     <p>Don't have an account? <a href="#/register">Register</a></p>
                 </form>
             </div>
+          </section>
         `;
     }
     
@@ -58,18 +60,6 @@ export default class LoginPage {
     }
 
     handleLoginSuccess() {
-        // Remove auth page styling immediately
-        document.body.classList.remove('auth-page');
-        
-        // Show footer immediately
-        const footer = document.querySelector('.footer');
-        if (footer) {
-            footer.classList.remove('hidden');
-            footer.style.opacity = '1';
-            footer.style.transform = 'translateY(0)';
-        }
-        
-        // Navigate to home page immediately
         window.location.href = '#/';
     }
 

@@ -37,7 +37,6 @@ class DatabaseHelper {
     this.dbName = CONFIG.DATABASE_NAME;
     this.dbVersion = CONFIG.DATABASE_VERSION;
     this.objectStoreName = CONFIG.OBJECT_STORE_NAME;
-    this.isInitialized = false;
   }
 
   async openDB() {
@@ -45,19 +44,15 @@ class DatabaseHelper {
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => {
-        log(LOG_LEVEL.ERROR, 'Failed to open database:', request.error);
         reject(new Error('Failed to open database'));
       };
 
       request.onsuccess = () => {
-        this.isInitialized = true;
-        log(LOG_LEVEL.INFO, 'Database opened successfully');
         resolve(request.result);
       };
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        log(LOG_LEVEL.INFO, 'Database upgrade needed, version:', db.version);
         
         // Create object store if it doesn't exist
         if (!db.objectStoreNames.contains(this.objectStoreName)) {
@@ -66,30 +61,18 @@ class DatabaseHelper {
             autoIncrement: false // Use API ID as key
           });
           
-          // Create indexes for better offline performance
+          // Create indexes
           objectStore.createIndex('title', 'title', { unique: false });
           objectStore.createIndex('description', 'description', { unique: false });
           objectStore.createIndex('createdAt', 'createdAt', { unique: false });
           objectStore.createIndex('isOffline', 'isOffline', { unique: false });
-          objectStore.createIndex('syncedAt', 'syncedAt', { unique: false });
-          objectStore.createIndex('isSyncing', 'isSyncing', { unique: false });
-          
-          log(LOG_LEVEL.INFO, 'Object store and indexes created successfully');
         }
       };
     });
   }
 
-  // Ensure database is initialized
-  async ensureInitialized() {
-    if (!this.isInitialized) {
-      await this.openDB();
-    }
-  }
-
   // Cache API stories for offline access
   async cacheStories(stories) {
-    await this.ensureInitialized();
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([this.objectStoreName], 'readwrite');
@@ -102,38 +85,30 @@ class DatabaseHelper {
         const existingStories = getAllRequest.result;
         
         // Clear existing cached stories (but keep offline stories and recently synced stories)
-        const clearRequest = objectStore.openCursor();
-        clearRequest.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            const story = cursor.value;
+      const clearRequest = objectStore.openCursor();
+      clearRequest.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          const story = cursor.value;
             // Only delete if it's not an offline story and not recently synced (within last 5 minutes)
             const isRecentlySynced = story.syncedAt && 
               (new Date().getTime() - new Date(story.syncedAt).getTime()) < 5 * 60 * 1000;
             
             if (!story.isOffline && !isRecentlySynced) {
-              cursor.delete();
-            }
-            cursor.continue();
-          } else {
-            // All stories processed, now add new ones
-            let completed = 0;
-            const total = stories.length;
-            
-            if (total === 0) {
-              log(LOG_LEVEL.INFO, 'No stories to cache');
-              resolve();
-              return;
-            }
-            
-            log(LOG_LEVEL.INFO, `Caching ${total} stories for offline use`);
-            
-            // Start pre-caching images immediately
-            this._preCacheStoryImages(stories).catch(error => {
-              log(LOG_LEVEL.WARN, 'Failed to pre-cache images during story caching:', error);
-            });
-            
-            stories.forEach(story => {
+            cursor.delete();
+          }
+          cursor.continue();
+        } else {
+          // All stories processed, now add new ones
+          let completed = 0;
+          const total = stories.length;
+          
+          if (total === 0) {
+            resolve();
+            return;
+          }
+          
+          stories.forEach(story => {
               // Check if this story already exists (by API ID or content)
               const existingStory = existingStories.find(existing => 
                 existing.id === story.id || 
@@ -156,46 +131,45 @@ class DatabaseHelper {
                 request.onsuccess = () => {
                   completed++;
                   if (completed === total) {
-                    log(LOG_LEVEL.INFO, `Successfully cached ${completed} stories`);
+                    // Pre-cache images for offline use
+                    this._preCacheStoryImages(stories);
                     resolve();
                   }
                 };
                 
                 request.onerror = () => {
-                  log(LOG_LEVEL.ERROR, 'Failed to update existing story:', request.error);
                   reject(new Error('Failed to update existing story'));
                 };
               } else {
                 // Add new story
-                const request = objectStore.put({
-                  ...story,
-                  cachedAt: new Date().toISOString(),
+            const request = objectStore.put({
+              ...story,
+              cachedAt: new Date().toISOString(),
                   isOffline: false,
                   isSyncing: false,
                   syncedAt: new Date().toISOString(),
                   syncMethod: 'api_cache'
-                });
-                
-                request.onsuccess = () => {
-                  completed++;
-                  if (completed === total) {
-                    log(LOG_LEVEL.INFO, `Successfully cached ${completed} stories`);
-                    resolve();
-                  }
-                };
-                
-                request.onerror = () => {
-                  log(LOG_LEVEL.ERROR, 'Failed to cache story:', request.error);
-                  reject(new Error('Failed to cache story'));
-                };
-              }
             });
-          }
+            
+            request.onsuccess = () => {
+              completed++;
+              if (completed === total) {
+                    // Pre-cache images for offline use
+                    this._preCacheStoryImages(stories);
+                resolve();
+              }
+            };
+            
+            request.onerror = () => {
+              reject(new Error('Failed to cache story'));
+            };
+              }
+          });
+        }
         };
       };
       
       getAllRequest.onerror = () => {
-        log(LOG_LEVEL.ERROR, 'Failed to get existing stories:', getAllRequest.error);
         reject(new Error('Failed to get existing stories'));
       };
     });
@@ -207,64 +181,31 @@ class DatabaseHelper {
       const imageCache = await caches.open('StoryApp-Images-v1');
       let cachedCount = 0;
       let skippedCount = 0;
-      let failedCount = 0;
       
       const imagePromises = stories
         .filter(story => story.photoUrl && story.photoUrl.startsWith('https://'))
         .map(async (story) => {
           try {
-            // Check if image is already cached
-            const existingResponse = await imageCache.match(story.photoUrl);
-            if (existingResponse) {
-              log(LOG_LEVEL.DEBUG, 'Story image already cached:', story.photoUrl);
+            const response = await fetch(story.photoUrl);
+            
+            // Skip caching if server returns 503
+            if (response.status === 503) {
+              skippedCount++;
               return;
             }
             
-            // Try to fetch with retry mechanism
-            let retryCount = 0;
-            const maxRetries = 3;
-            
-            while (retryCount <= maxRetries) {
-              try {
-                const response = await fetch(story.photoUrl);
-                
-                // Skip caching if server returns 503
-                if (response.status === 503) {
-                  log(LOG_LEVEL.WARN, 'Skipping story image due to 503:', story.photoUrl);
-                  skippedCount++;
-                  return;
-                }
-                
-                if (response.ok) {
-                  const responseToCache = response.clone();
-                  await imageCache.put(story.photoUrl, responseToCache);
-                  cachedCount++;
-                  log(LOG_LEVEL.DEBUG, 'Successfully cached story image:', story.photoUrl);
-                  return;
-                }
-                
-                throw new Error(`Image fetch failed with status: ${response.status}`);
-              } catch (error) {
-                retryCount++;
-                log(LOG_LEVEL.WARN, `Failed to cache story image (attempt ${retryCount}/${maxRetries + 1}):`, story.photoUrl, error);
-                
-                if (retryCount > maxRetries) {
-                  failedCount++;
-                  break;
-                }
-                
-                // Wait before retry with exponential backoff
-                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
-              }
+            if (response.ok) {
+              const responseToCache = response.clone();
+              await imageCache.put(story.photoUrl, responseToCache);
+              cachedCount++;
             }
           } catch (error) {
             log(LOG_LEVEL.WARN, 'Failed to pre-cache story image:', story.photoUrl, error);
-            failedCount++;
           }
         });
       
       await Promise.allSettled(imagePromises);
-      log(LOG_LEVEL.INFO, `IndexedDB story images pre-caching: ${cachedCount} cached, ${skippedCount} skipped (503), ${failedCount} failed`);
+      log(LOG_LEVEL.INFO, `IndexedDB story images pre-caching: ${cachedCount} cached, ${skippedCount} skipped (503)`);
     } catch (error) {
       log(LOG_LEVEL.WARN, 'Failed to pre-cache story images from IndexedDB:', error);
     }
@@ -272,7 +213,6 @@ class DatabaseHelper {
 
   // Get cached stories for offline display
   async getCachedStories() {
-    await this.ensureInitialized();
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([this.objectStoreName], 'readonly');
@@ -281,23 +221,16 @@ class DatabaseHelper {
 
       request.onsuccess = () => {
         const stories = request.result;
-        log(LOG_LEVEL.INFO, `Retrieved ${stories.length} cached stories from IndexedDB`);
-        
-        // Sort stories by creation date (newest first)
-        const sortedStories = stories.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
         
         // Pre-cache images for offline use when loading stories
-        if (sortedStories.length > 0) {
-          this._preCacheStoryImages(sortedStories);
+        if (stories.length > 0) {
+          this._preCacheStoryImages(stories);
         }
         
-        resolve(sortedStories);
+        resolve(stories);
       };
 
       request.onerror = () => {
-        log(LOG_LEVEL.ERROR, 'Failed to get cached stories:', request.error);
         reject(new Error('Failed to get cached stories'));
       };
     });

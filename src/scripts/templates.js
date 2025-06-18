@@ -12,12 +12,6 @@ export function generateHeader() {
   const isLoggedIn = isAuthenticated();
   const currentPath = window.location.hash.slice(1) || '/';
   
-  // Check if running in PWA mode
-  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                window.matchMedia('(display-mode: window-controls-overlay)').matches ||
-                window.matchMedia('(display-mode: minimal-ui)').matches ||
-                window.navigator.standalone === true;
-  
   // Base header structure
   const baseHeader = `
     <header class="app-header">
@@ -28,14 +22,7 @@ export function generateHeader() {
             ${generateNavigationItems(isLoggedIn, currentPath)}
           </ul>
         </nav>
-        <div class="header-controls">
-          ${isLoggedIn ? `
-            <button id="notification-toggle" class="notification-toggle" title="Toggle Notifications">
-              <i class="fas fa-bell"></i>
-            </button>
-          ` : ''}
-          <button id="drawer-button" class="drawer-button" aria-label="Toggle navigation menu">☰</button>
-        </div>
+        <button id="drawer-button" class="drawer-button" aria-label="Toggle navigation menu">☰</button>
       </div>
     </header>
   `;
@@ -116,32 +103,11 @@ export function setupHeader() {
   const drawerButton = document.getElementById('drawer-button');
   const navDrawer = document.getElementById('navigation-drawer');
   const logoutLink = document.getElementById('logout-link');
-  const notificationToggle = document.getElementById('notification-toggle');
-
-  // Check if running in PWA mode
-  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                window.matchMedia('(display-mode: window-controls-overlay)').matches ||
-                window.matchMedia('(display-mode: minimal-ui)').matches ||
-                window.navigator.standalone === true;
-
-  // Setup notification toggle if function exists
-  if (typeof window.setupNotificationToggle === 'function') {
-    window.setupNotificationToggle();
-  }
 
   // Toggle drawer
   if (drawerButton) {
     drawerButton.addEventListener('click', () => {
       navDrawer.classList.toggle('open');
-      
-      // Add body scroll lock for PWA
-      if (isPWA) {
-        if (navDrawer.classList.contains('open')) {
-          document.body.style.overflow = 'hidden';
-        } else {
-          document.body.style.overflow = '';
-        }
-      }
     });
   }
 
@@ -157,30 +123,7 @@ export function setupHeader() {
   document.addEventListener('click', (event) => {
     if (navDrawer && !navDrawer.contains(event.target) && !drawerButton.contains(event.target)) {
       navDrawer.classList.remove('open');
-      if (isPWA) {
-        document.body.style.overflow = '';
-      }
     }
   });
-
-  // Close drawer when pressing Escape key
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && navDrawer && navDrawer.classList.contains('open')) {
-      navDrawer.classList.remove('open');
-      if (isPWA) {
-        document.body.style.overflow = '';
-      }
-    }
-  });
-
-  // Close drawer when navigating to a new page (for PWA)
-  if (isPWA) {
-    window.addEventListener('hashchange', () => {
-      if (navDrawer && navDrawer.classList.contains('open')) {
-        navDrawer.classList.remove('open');
-        document.body.style.overflow = '';
-      }
-    });
-  }
 }
 
