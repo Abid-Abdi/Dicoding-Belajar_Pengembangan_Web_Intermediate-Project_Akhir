@@ -57,23 +57,40 @@ export async function userRegister({name, email, password}) {
       body: JSON.stringify({name, email, password}),
     });
     
-    // Check if response is JSON before trying to parse
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      // If response is not JSON, it might be an offline error from service worker
-      const textResponse = await response.text();
-      if (textResponse.includes('Offline')) {
-        throw new Error('No internet connection. Please check your connection and try again.');
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      // Try to parse error response as JSON
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Registration failed with status ${response.status}`);
+      } catch (jsonError) {
+        // If JSON parsing fails, check if it's an offline response
+        if (response.status === 503) {
+          throw new Error('Unable to register. Please check your internet connection and try again.');
+        }
+        throw new Error(`Registration failed with status ${response.status}`);
       }
-      throw new Error('Server returned invalid response format. Please try again.');
     }
     
-    return await handleResponse(response);
+    // Parse successful response
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Error during registration:', error);
-    if (error.message.includes('No internet connection')) {
-      throw new Error('No internet connection. Please check your connection and try again.');
+    
+    // Handle specific error types
+    if (error.message.includes('Failed to fetch') || 
+        error.message.includes('NetworkError') ||
+        error.message.includes('TypeError')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
+    
+    // Handle offline service worker responses
+    if (error.message.includes('Unable to register') ||
+        error.message.includes('No internet connection')) {
+      throw new Error('Unable to register. Please check your internet connection and try again.');
+    }
+    
     throw new Error(error.message || 'Failed to register. Please check your internet connection.');
   }
 }
@@ -112,16 +129,23 @@ export async function userLogin({email, password}) {
       throw new Error('Server returned invalid response format. Please try again.');
     }
     
-    const data = await response.json();
-    console.log(`✅ Login response parsed successfully:`, { 
-      hasLoginResult: !!data.loginResult, 
-      hasToken: !!(data.loginResult && data.loginResult.token),
-      pwaMode: pwaMode 
-    });
-    
+    // Check if response is ok before trying to parse JSON
     if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
+      // Try to parse error response as JSON
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Login failed with status ${response.status}`);
+      } catch (jsonError) {
+        // If JSON parsing fails, check if it's an offline response
+        if (response.status === 503) {
+          throw new Error('Unable to authenticate. Please check your internet connection and try again.');
+        }
+        throw new Error(`Login failed with status ${response.status}`);
+      }
     }
+    
+    // Parse successful response
+    const data = await response.json();
     
     // Store token and user data after successful login
     if (data.loginResult && data.loginResult.token) {
@@ -133,13 +157,21 @@ export async function userLogin({email, password}) {
     
     return data;
   } catch (error) {
-    console.error(`❌ Login error - PWA Mode: ${pwaMode}, Error:`, error);
-    if (error.message.includes('Failed to fetch')) {
-      throw new Error('Network error. Please check your internet connection.');
+    console.error('Error during login:', error);
+    
+    // Handle specific error types
+    if (error.message.includes('Failed to fetch') || 
+        error.message.includes('NetworkError') ||
+        error.message.includes('TypeError')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
-    if (error.message.includes('No internet connection')) {
-      throw new Error('No internet connection. Please check your connection and try again.');
+    
+    // Handle offline service worker responses
+    if (error.message.includes('Unable to authenticate') ||
+        error.message.includes('No internet connection')) {
+      throw new Error('Unable to authenticate. Please check your internet connection and try again.');
     }
+    
     throw new Error(error.message || 'Failed to login. Please check your credentials.');
   }
 }
